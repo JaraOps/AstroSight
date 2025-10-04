@@ -74,7 +74,7 @@ def main_api_pipeline():
         if xml_result:
             all_xml_data.append(xml_result)
 
-    with open("raw_pmc_data.xml", "w", encoding= "utf-8") as f:
+    with open("raw_pmc_data.xml", "w", encoding="utf-8") as f:
         f.write("".join(all_xml_data))
 
     print("\n\n Phase 1 Complete")
