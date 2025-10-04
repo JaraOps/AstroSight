@@ -1,1 +1,1 @@
-#create web aplication with streamlit including knowledge graph, add AI for purpose driven summaries
+#create web application with streamlit including knowledge graph, add AI for purpose driven summaries
