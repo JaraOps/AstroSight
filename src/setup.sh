@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# 1. NLTK PUNKT FIX: Download NLTK resources directly to the application path
-# This is the most reliable fix for the "NLTK tokenizers are missing" error.
+# 1. NLTK PUNKT FIX (Most reliable method)
+# Downloads the necessary NLTK data before the app starts.
 python -m nltk.downloader punkt
 
-# 2. SPAcY FIX: Link the model installed via requirements.txt
-# This ensures spacy can find the en_core_web_sm model
+# 2. SPAcY FIX
+# Links the model installed via requirements.txt, making it callable by spacy.load().
 python -m spacy link en_core_web_sm en_core_web_sm --force
