@@ -380,3 +380,21 @@ with col2:
         options=df[TITLE_COL].tolist(),
         key='tag_ref_selector'
     )
+    if reference_title:
+        top_similar = get_tag_similarity(df, reference_title)
+
+        results_list = []
+        for title, score in top_similar:
+            # **MUST FIX:** Ensure 'Theme_category' is correct (lowercase 'c')
+            # This line relies on your corrected column name!
+            theme = df[df['Title'] == title]['Theme_category'].iloc[0]
+
+            results_list.append({
+                "Title": title,
+                "Theme": theme,
+                "Shared Keywords": score
+            })
+
+        st.dataframe(results_list)
+
+#Created and edited by: JaraOps
