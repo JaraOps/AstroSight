@@ -5,6 +5,7 @@ from typing import List
 from pathlib import Path
 import collections  # Import needed for global keyword analysis
 
+import nltk
 # REMOVED SLOW IMPORTS:
 # from sklearn.metrics.pairwise import cosine_similarity
 # import numpy as np
@@ -27,19 +28,11 @@ except Exception:
     #import nltk
     import streamlit as st
 
-    import nltk
-    from pathlib import Path
-
-    # Make sure NLTK data folder exists
-    nltk_data_path = Path.home() / "nltk_data"
-    nltk_data_path.mkdir(parents=True, exist_ok=True)
-
-    # Force download of punkt and punkt_tab (handles the Streamlit Cloud bug)
-    nltk.download("punkt", download_dir=str(nltk_data_path))
-    nltk.download("punkt_tab", download_dir=str(nltk_data_path))
-
-    # Add the data path so NLTK can find it
-    nltk.data.path.append(str(nltk_data_path))
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except nltk.downloader.DownloadError:
+        # This runs the download directly inside the app, guaranteeing the resource is available
+        nltk.download('punkt')
 
 # CONFIG
 DEFAULT_DATAFILE = "final_analyzed_data.csv"
