@@ -28,13 +28,17 @@ except Exception:
     import streamlit as st
 
     import nltk
-    import os
     from pathlib import Path
 
+    # Make sure NLTK data folder exists
     nltk_data_path = Path.home() / "nltk_data"
     nltk_data_path.mkdir(parents=True, exist_ok=True)
 
+    # Force download of punkt and punkt_tab (handles the Streamlit Cloud bug)
     nltk.download("punkt", download_dir=str(nltk_data_path))
+    nltk.download("punkt_tab", download_dir=str(nltk_data_path))
+
+    # Add the data path so NLTK can find it
     nltk.data.path.append(str(nltk_data_path))
 
 # CONFIG

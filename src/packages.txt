@@ -1,7 +1,1 @@
-
-# system dependencies, if any
-# 2. FIX: spaCy model download for Knowledge Graph
-python -m spacy download en_core_web_sm
-
-# 3. FIX: spaCy model link/setup
-python -m spacy link en_core_web_sm en_core_web_sm --force
+# Leave empty unless you need system libraries (like libgl, ffmpeg, etc.)
