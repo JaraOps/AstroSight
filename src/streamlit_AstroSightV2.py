@@ -393,6 +393,17 @@ with col2:
                 "Shared Keywords": score
             })
 
-        st.dataframe(results_list)
+        st.dataframe(
+            results_list,
+            use_container_width=True,
+            # Highlight the column that shows the ranking metric
+            column_config={
+                "Shared Keywords": st.column_config.NumberColumn(
+                    "Shared Keywords",
+                    help="Number of keywords shared with the selected article",
+                    format="%d"
+                )
+            }
+        )
 
 #Created and edited by: JaraOps
