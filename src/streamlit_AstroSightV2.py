@@ -15,12 +15,14 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lex_rank import LexRankSummarizer
 
-@st.cache_resource
-def load_spacy_model():
-    import spacy
-    return spacy.load("en_core_web_sm")
+import spacy
+import subprocess
 
-nlp = load_spacy_model()
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
+    nlp = spacy.load("en_core_web_sm")
 SPACY_AVAILABLE = True
 
 
