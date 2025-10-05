@@ -2,9 +2,9 @@
 import pandas as pd
 
 #config
-INPUT_CSV_FILE = "publications_with_keyboard.csv"
+INPUT_CSV_FILE = "publications_with_keywords.csv"
 OUTPUT_CSV_FILE = "final_analyzed_data.csv"
-KEYWORD_COLUMN ="TFIDF_Keywords_Top_10"
+KEYWORD_COLUMN ="Top_Keywords"
 
 #define keyword rules based on expected space biology topics
 #the first matching category is assigned
