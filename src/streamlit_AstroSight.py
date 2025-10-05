@@ -63,7 +63,7 @@ def load_data():
 
 @st.cache_data
 def summarize_with_lexrank(text, sentence_count=3):
-    """Generates a summary using the LexRank algorithm (local & free)."""
+
 
     if not text:
         return "No text available for summarization."
@@ -208,24 +208,32 @@ def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
 
-def get_tag_similarity(df, reference_title):
-    # Get the keywords for the selected article
 
-    ref_keywords = set(df[df['Title'] == reference_title]['Top_Keywords'].iloc[0])
+def get_tag_similarity(df, reference_title):
+
+    ref_keywords_raw = df[df['Title'] == reference_title]['Top_Keywords'].iloc[0]
+
+    if isinstance(ref_keywords_raw, str):
+        ref_keywords = set([k.strip() for k in ref_keywords_raw.split(';') if k.strip()])
+    else:
+        ref_keywords = set()
 
     similarity_scores = {}
 
-    # Iterate and compare
+
     for index, row in df.iterrows():
         title = row['Title']
         if title != reference_title:
-            other_keywords = set(row['Top_Keywords'])
+            other_keywords_raw = row['Top_Keywords']
 
-            # Similarity Score is the count of shared tags
+            if isinstance(other_keywords_raw, str):
+                other_keywords = set([k.strip() for k in other_keywords_raw.split(';') if k.strip()])
+            else:
+                other_keywords = set()
+
             score = len(ref_keywords.intersection(other_keywords))
             similarity_scores[title] = score
 
-    # Sort and get the top N
     TOP_N_RESULTS = 5
     top_similar = sorted(similarity_scores.items(), key=lambda item: item[1], reverse=True)[:TOP_N_RESULTS]
     return top_similar
