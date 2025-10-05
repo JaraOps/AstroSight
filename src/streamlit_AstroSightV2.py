@@ -133,6 +133,8 @@ def get_tag_similarity(df, reference_title):
 @st.cache_data
 def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[str], top_n_entities=5):
     # Use Spacy to extract entities and build a graph.
+    st.write("Starting entity graph build...")
+
     if not SPACY_AVAILABLE:
         return None
 
@@ -147,6 +149,7 @@ def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[
         title = titles[i]
 
         G.add_node(title, type="doc", color=COLOR_MAP['DOC'])
+        st.write(f"Processing document {i + 1}")
 
         doc = nlp(txt[:5000])  # Limit text length for speed
 
