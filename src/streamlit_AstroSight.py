@@ -24,25 +24,17 @@ try:
     SPACY_AVAILABLE = True
 except Exception:
     SPACY_AVAILABLE = False
-    import nltk
+    #import nltk
     import streamlit as st
 
     import nltk
     import os
     from pathlib import Path
 
-    # Create a writable data path
     nltk_data_path = Path.home() / "nltk_data"
     nltk_data_path.mkdir(parents=True, exist_ok=True)
 
-    # Download the needed tokenizer
     nltk.download("punkt", download_dir=str(nltk_data_path))
-
-    # Manually create the fake "punkt_tab" folder to stop the crash
-    punkt_tab_dir = nltk_data_path / "tokenizers" / "punkt_tab" / "english"
-    punkt_tab_dir.mkdir(parents=True, exist_ok=True)
-
-    # Tell NLTK where to look
     nltk.data.path.append(str(nltk_data_path))
 
 # CONFIG

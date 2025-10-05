@@ -1,6 +1,5 @@
-nltk
-nltk.download('punkt')
 
+# system dependencies, if any
 # 2. FIX: spaCy model download for Knowledge Graph
 python -m spacy download en_core_web_sm
 
