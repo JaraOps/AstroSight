@@ -1,17 +1,13 @@
 #create web application with streamlit including knowledge graph, add AI for purpose driven summaries
 
-import os
 from typing import List
-
+from pathlib import Path
 import pandas as pd
 import streamlit as st
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lex_rank import LexRankSummarizer
 
-#AI
-try:
-    import openai
-    OPENAI_AVAILABLE = True
-except Exception:
-    OPENAI_AVAILABLE = False
 # NLP/Graph
 
 try:
@@ -27,48 +23,71 @@ DEFAULT_DATAFILE = "final_analyzed_data.csv"
 TEXT_COL = "Clean_Text_for_NLP"
 KEYWORDS_COL = "Top_Keywords"
 THEME_COL = "Theme_category"
-TITLE_COL = "Article_Title"
+TITLE_COL = "Title"
 AUTHORS_COL = "Authors"
 YEAR_COL = "Year"
 PMC_COL = "PMC_ID"
 
 #HELPER FUNCTIONS
-def load_data(path = DEFAULT_DATAFILE):
-    if not os.path.exists(path):
-        st.error(f"Data file not found: {path}")
-        return pd.DataFrame()
-    df = pd.read_csv("final_analyzed_data.csv")
-    df.rename(columns={
-        "Theme_Category": "Theme_category",
-        "Title": "Article_Title"
-    }, inplace=True)
-
-    return df
+def get_absolute_path(filename):
+    # This gets the directory where the current script (streamlit_AstroSight.py) is located
+    BASE_DIR = Path(__file__).parent
+    # This constructs the full path: /AstroSight/src/final_analyzed_data.csv
+    return BASE_DIR / filename
 
 
-def summarize_with_openai(text: str, purpose: str = "short summary (3 sentences)") -> str:
-    if not OPENAI_AVAILABLE:
-        return "OpenAI library not installed. Install `openai` to enable AI summaries."
 
-    key = os.environ.get("OPENAI_API_KEY")
+@st.cache_data
+def load_data():
 
-    if not key:
-        return "OpenAI API key not set. Set the OPENAI_API_KEY environment to enable AI summaries."
+    full_path = get_absolute_path(DEFAULT_DATAFILE)
+
+    if not full_path.exists():
+        if not Path(DEFAULT_DATAFILE).exists():
+            st.error(f"Data file not found: {full_path}. Check file location or path.")
+            return pd.DataFrame()
+        df = pd.read_csv(DEFAULT_DATAFILE)
+    else:
+        df = pd.read_csv(full_path)
 
     try:
-        client = openai.OpenAI(api_key=key)
+        df = df.rename(columns={
+            "Theme_Category": "Theme_category",
+        }, inplace=False)
 
-        prompt = f"Provide a {purpose} of the following scientific text. Be concise and factual.\n\nText:\n{text[:4000]}"
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-            max_tokens=300,
-        )
-        # La forma de acceder al contenido también cambia
-        return resp.choices[0].message.content.strip()
+        return df
     except Exception as e:
-        return f"OpenAI request failed: {e}"
+        st.error(f"Error loading data: {e}")
+        return pd.DataFrame()
+
+
+@st.cache_data
+def summarize_with_lexrank(text, sentence_count=3):
+    """Generates a summary using the LexRank algorithm (local & free)."""
+
+    if not text:
+        return "No text available for summarization."
+
+    # Check for minimum text length to avoid errors
+    if len(text.split('.')) < sentence_count:
+        sentence_count = len(text.split('.'))
+
+    try:
+        # 1. Set up the parser and tokenizer
+        parser = PlaintextParser.from_string(text, Tokenizer("english"))
+
+        # 2. Instantiate the summarizer
+        summarizer = LexRankSummarizer()
+
+        # 3. Generate the summary (e.g., top 3 sentences)
+        summary = summarizer(parser.document, sentence_count)
+
+        # 4. Join the sentences back into a single string
+        return " ".join([str(sentence) for sentence in summary])
+
+    except Exception as e:
+        # Catch any potential NLTK/Sumy errors gracefully
+        return f"Error during local summarization: {e}"
 
 @st.cache_data
 def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[str], top_n_entities=5):
@@ -138,12 +157,12 @@ def draw_pyvis_graph(G: nx.Graph, height="600px", width="100%"):
     return net
 
 # UI
-st.title("NASA Space Biology - Explorer & Summarizer") #Change to AstroSight
+st.title("AstroSight by The Chilean Orbital")
 
 #Sidebar: Data files and quick settings
 st.sidebar.header("Data & Settings")
 datafile = st.sidebar.text_input("Data CSV path", value=DEFAULT_DATAFILE)
-df = load_data(datafile)
+df = load_data()
 
 if df.empty:
     st.stop()
@@ -182,6 +201,36 @@ if selected_years and YEAR_COL in filtered.columns:
     filtered=filtered[filtered[YEAR_COL].isin(selected_years)]
 
 st.sidebar.markdown(f"**Results:** {len(filtered)} publications")
+st.sidebar.markdown("github.com/JaraOps | The Chilean Orbital")
+
+@st.cache_data
+def convert_df_to_csv(df):
+    return df.to_csv(index=False).encode('utf-8')
+
+
+def get_tag_similarity(df, reference_title):
+    # Get the keywords for the selected article
+
+    ref_keywords = set(df[df['Title'] == reference_title]['Top_Keywords'].iloc[0])
+
+    similarity_scores = {}
+
+    # Iterate and compare
+    for index, row in df.iterrows():
+        title = row['Title']
+        if title != reference_title:
+            other_keywords = set(row['Top_Keywords'])
+
+            # Similarity Score is the count of shared tags
+            score = len(ref_keywords.intersection(other_keywords))
+            similarity_scores[title] = score
+
+    # Sort and get the top N
+    TOP_N_RESULTS = 5
+    top_similar = sorted(similarity_scores.items(), key=lambda item: item[1], reverse=True)[:TOP_N_RESULTS]
+    return top_similar
+
+
 
 #Main layout: list on left, details on right
 col1, col2 = st.columns([1,2])
@@ -201,15 +250,25 @@ with col1:
     st.markdown(f"**Theme:** {filtered.loc[idx, THEME_COL] if THEME_COL in filtered.columns else 'N/A'}")
     st.markdown("---")
     st.subheader("Export / Batch")
-    to_export = st.multiselect("Select rows to export (titles)", options=titles)
-    if st.button("Export selected to CSV"):
-        if not to_export:
-            st.warning("No items selected")
+
+    to_export = st.multiselect("Select rows to export (titles)", options=filtered['Title'].tolist(), key='export_titles_selector')
+
+    outpath_filename = st.text_input("Output filename", value="export_selected.csv")
+
+    if to_export:
+        outdf = filtered[filtered['Title'].isin(to_export)]
+
+        csv_data = convert_df_to_csv(outdf)
+
+        st.download_button(
+            label="Download Selected CSV",
+            data=csv_data,
+            file_name='export_selected_data.csv',
+            mime='text/csv',
+            key='download_csv'  # Unique key for the widget
+        )
     else:
-        outdf = filtered[filtered[TITLE_COL].isin(to_export)]
-    outpath = st.text_input("Output filename", value="export_selected.csv")
-    outdf.to_csv(outpath, index=False)
-    st.success(f"Exported {len(outdf)} rows to {outpath}")
+        st.info("Select titles above to enable the download button.")
 
 with col2:
     st.subheader("Article details & tools")
@@ -221,18 +280,27 @@ with col2:
 
     st.text_area("Article text", value=text if pd.notna(text) else "", height=300, label_visibility="collapsed")
 
+    st.header("Article Details & Summarization")
+    titles_list = df['Title'].unique().tolist()
+    selected_title = st.selectbox(
+        "Select an Article to Summarize:",
+        options=titles_list,
+        key='summary_title_selector'
+    )
     st.markdown("---")
     st.subheader("AI Summary & Q&A")
-    if not OPENAI_AVAILABLE:
-        st.info("OpenAI python library not installed. Install `openai` to enable in-app summarization.")
-    else:
-        st.write("Set OPENAI_API_KEY as an environment variable to enable generation.")
-    if st.button("Generate short AI summary (3 sentences)"):
-        summary = summarize_with_openai(text, purpose="short summary (3 sentences)")
+
+    selected_text = df[df['Title'] == selected_title]['Clean_Text_for_NLP'].iloc[0]
+    SENTENCE_COUNT = 3
+
+    if st.button("Generate Summary"):
+        summary = summarize_with_lexrank(selected_text, sentence_count=SENTENCE_COUNT)
+
+        st.subheader(f"Article Summary ({SENTENCE_COUNT} Sentences, LexRank Model)")
         st.info(summary)
 
     st.markdown("---")
-    st.subheader("Knowledge Graph (entities)")
+    st.subheader("Knowledge Graph")
     if not SPACY_AVAILABLE:
         st.info("spaCy/pyvis not installed. Install `spacy`, `pyvis`, and download `en_core_web_sm` to enable graph.")
     else:
@@ -266,7 +334,32 @@ with col2:
             net.save_graph(tmpfile)
             st.components.v1.html(open(tmpfile, 'r', encoding='utf-8').read(), height=600)
 
+    st.markdown("---")
+    st.header("Inter-document Tag Overlap Engine")
+    st.write("Instantly links papers based on shared core topics extracted by our NLP pipeline.")
 
+    # Define the selectbox for user input
+    reference_title = st.selectbox(
+        "Select an Article to find look-alikes:",
+        options=df['Title'].tolist(),
+        key='tag_ref_selector'
+    )
 
+    if reference_title:
+        top_similar = get_tag_similarity(df, reference_title)
+
+        results_list = []
+        for title, score in top_similar:
+            # **MUST FIX:** Ensure 'Theme_category' is correct (lowercase 'c')
+            # This line relies on your corrected column name!
+            theme = df[df['Title'] == title]['Theme_category'].iloc[0]
+
+            results_list.append({
+                "Title": title,
+                "Theme": theme,
+                "Shared Keywords": score
+            })
+
+        st.dataframe(results_list)
 
 # Created and edited by: JaraOps

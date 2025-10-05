@@ -52,7 +52,7 @@ def get_top_tfidf_keywords(tfidf_matrix, feature_names, doc_index, top_n):
 
     keywords = [feature_names[i] for i in top_n_indices]
 
-    return ";".join(keywords)
+    return ", ".join(keywords)
 
 def main_npl_pipeline():
     #load and preprocess data

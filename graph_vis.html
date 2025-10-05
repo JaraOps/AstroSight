@@ -1,0 +1,163 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 600px;
+                 background-color: #ffffff;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#8fb9a8", "id": "Impact of microgravity and lunar gravity on murine skeletal and immune systems during space travel", "label": "Impact of microgravity and lunar gravity on murine skeletal ", "shape": "dot", "size": 20, "title": "Impact of microgravity and lunar gravity on murine skeletal and immune systems during space travel"}, {"color": "#33FF57", "id": "MHU", "label": "MHU", "shape": "dot", "size": 10, "title": "MHU (ORG)"}, {"color": "#33FF57", "id": "MHU-1", "label": "MHU-1", "shape": "dot", "size": 10, "title": "MHU-1 (ORG)"}, {"color": "#33FF57", "id": "the Transporting Cage Unit", "label": "the Transporting Cage Unit", "shape": "dot", "size": 10, "title": "the Transporting Cage Unit (ORG)"}, {"color": "#33FF57", "id": "TCU", "label": "TCU", "shape": "dot", "size": 10, "title": "TCU (ORG)"}, {"color": "#33FF57", "id": "Dragon Space Vehicle", "label": "Dragon Space Vehicle", "shape": "dot", "size": 10, "title": "Dragon Space Vehicle (ORG)"}, {"color": "#8fb9a8", "id": "Multi-omics analysis of multiple missions to space reveal a theme of lipid dysregulation in mouse liver", "label": "Multi-omics analysis of multiple missions to space reveal a ", "shape": "dot", "size": 20, "title": "Multi-omics analysis of multiple missions to space reveal a theme of lipid dysregulation in mouse liver"}, {"color": "#3357FF", "id": "hematoxylin", "label": "hematoxylin", "shape": "dot", "size": 10, "title": "hematoxylin (GPE)"}, {"color": "#33FF57", "id": "H\u0026E", "label": "H\u0026E", "shape": "dot", "size": 10, "title": "H\u0026E (ORG)"}, {"color": "#33FF57", "id": "ORO", "label": "ORO", "shape": "dot", "size": 10, "title": "ORO (ORG)"}, {"color": "#33FF57", "id": "ISS", "label": "ISS", "shape": "dot", "size": 10, "title": "ISS (ORG)"}, {"color": "#33FF57", "id": "the Rodent Research 1", "label": "the Rodent Research 1", "shape": "dot", "size": 10, "title": "the Rodent Research 1 (ORG)"}, {"color": "#8fb9a8", "id": "Microgravity and Cellular Biology: Insights into Cellular Responses and Implications for Human Health", "label": "Microgravity and Cellular Biology: Insights into Cellular Re", "shape": "dot", "size": 20, "title": "Microgravity and Cellular Biology: Insights into Cellular Responses and Implications for Human Health"}, {"color": "#8fb9a8", "id": "Circulating miRNA Spaceflight Signature Reveals Targets for Countermeasure Development", "label": "Circulating miRNA Spaceflight Signature Reveals Targets for ", "shape": "dot", "size": 20, "title": "Circulating miRNA Spaceflight Signature Reveals Targets for Countermeasure Development"}, {"color": "#33FF57", "id": "Morey-Holton", "label": "Morey-Holton", "shape": "dot", "size": 10, "title": "Morey-Holton (ORG)"}, {"color": "#33FF57", "id": "Globus", "label": "Globus", "shape": "dot", "size": 10, "title": "Globus (ORG)"}, {"color": "#33FF57", "id": "IR", "label": "IR", "shape": "dot", "size": 10, "title": "IR (ORG)"}, {"color": "#33FF57", "id": "Mewaldt", "label": "Mewaldt", "shape": "dot", "size": 10, "title": "Mewaldt (ORG)"}, {"color": "#33FF57", "id": "miRNAs", "label": "miRNAs", "shape": "dot", "size": 10, "title": "miRNAs (ORG)"}, {"color": "#8fb9a8", "id": "Microgravity Induces Pelvic Bone Loss through Osteoclastic Activity, Osteocytic Osteolysis, and Osteoblastic Cell Cycle Inhibition by CDKN1a/p21", "label": "Microgravity Induces Pelvic Bone Loss through Osteoclastic A", "shape": "dot", "size": 20, "title": "Microgravity Induces Pelvic Bone Loss through Osteoclastic Activity, Osteocytic Osteolysis, and Osteoblastic Cell Cycle Inhibition by CDKN1a/p21"}, {"color": "#33FF57", "id": "Post-FlightAll", "label": "Post-FlightAll", "shape": "dot", "size": 10, "title": "Post-FlightAll (ORG)"}, {"color": "#3357FF", "id": "the Pelvic Region", "label": "the Pelvic Region", "shape": "dot", "size": 10, "title": "the Pelvic Region (GPE)"}, {"color": "#33FF57", "id": "BV/TV", "label": "BV/TV", "shape": "dot", "size": 10, "title": "BV/TV (ORG)"}, {"color": "#33FF57", "id": "linear", "label": "linear", "shape": "dot", "size": 10, "title": "linear (ORG)"}, {"color": "#3357FF", "id": "\u03bcCT", "label": "\u03bcCT", "shape": "dot", "size": 10, "title": "\u03bcCT (GPE)"}, {"color": "#8fb9a8", "id": "GeneLab Database Analyses Suggest Long-Term Impact of Space Radiation on the Cardiovascular System by the Activation ofFYNThrough Reactive Oxygen Species", "label": "GeneLab Database Analyses Suggest Long-Term Impact of Space ", "shape": "dot", "size": 20, "title": "GeneLab Database Analyses Suggest Long-Term Impact of Space Radiation on the Cardiovascular System by the Activation ofFYNThrough Reactive Oxygen Species"}, {"color": "#33FF57", "id": "GeneLab", "label": "GeneLab", "shape": "dot", "size": 10, "title": "GeneLab (ORG)"}, {"color": "#33FF57", "id": "HUVEC", "label": "HUVEC", "shape": "dot", "size": 10, "title": "HUVEC (ORG)"}, {"color": "#33FF57", "id": "GLDS-52", "label": "GLDS-52", "shape": "dot", "size": 10, "title": "GLDS-52 (ORG)"}, {"color": "#33FF57", "id": "ANOVA", "label": "ANOVA", "shape": "dot", "size": 10, "title": "ANOVA (ORG)"}, {"color": "#8fb9a8", "id": "NASA GeneLab Platform Utilized for Biological Response to Space Radiation in Animal Models", "label": "NASA GeneLab Platform Utilized for Biological Response to Sp", "shape": "dot", "size": 20, "title": "NASA GeneLab Platform Utilized for Biological Response to Space Radiation in Animal Models"}, {"color": "#33FF57", "id": "NASA", "label": "NASA", "shape": "dot", "size": 10, "title": "NASA (ORG)"}, {"color": "#33FF57", "id": "GeneLab Data System", "label": "GeneLab Data System", "shape": "dot", "size": 10, "title": "GeneLab Data System (ORG)"}, {"color": "#33FF57", "id": "GLDS", "label": "GLDS", "shape": "dot", "size": 10, "title": "GLDS (ORG)"}, {"color": "#33FF57", "id": "the International Space Station", "label": "the International Space Station", "shape": "dot", "size": 10, "title": "the International Space Station (ORG)"}, {"color": "#8fb9a8", "id": "Dose- and Ion-Dependent Effects in the Oxidative Stress Response to Space-Like Radiation Exposure in the Skeletal System", "label": "Dose- and Ion-Dependent Effects in the Oxidative Stress Resp", "shape": "dot", "size": 20, "title": "Dose- and Ion-Dependent Effects in the Oxidative Stress Response to Space-Like Radiation Exposure in the Skeletal System"}, {"color": "#33FF57", "id": "TBI", "label": "TBI", "shape": "dot", "size": 10, "title": "TBI (ORG)"}, {"color": "#33FF57", "id": "Tibiae", "label": "Tibiae", "shape": "dot", "size": 10, "title": "Tibiae (ORG)"}, {"color": "#33FF57", "id": "Dunnett", "label": "Dunnett", "shape": "dot", "size": 10, "title": "Dunnett (ORG)"}, {"color": "#33FF57", "id": "Brookhaven National Lab", "label": "Brookhaven National Lab", "shape": "dot", "size": 10, "title": "Brookhaven National Lab (ORG)"}, {"color": "#33FF57", "id": "BNL", "label": "BNL", "shape": "dot", "size": 10, "title": "BNL (ORG)"}, {"color": "#8fb9a8", "id": "Mice in Bion-M 1 Space Mission: Training and Selection", "label": "Mice in Bion-M 1 Space Mission: Training and Selection", "shape": "dot", "size": 20, "title": "Mice in Bion-M 1 Space Mission: Training and Selection"}, {"color": "#33FF57", "id": "DiscussionGroup", "label": "DiscussionGroup", "shape": "dot", "size": 10, "title": "DiscussionGroup (ORG)"}, {"color": "#33FF57", "id": "SFV", "label": "SFV", "shape": "dot", "size": 10, "title": "SFV (ORG)"}, {"color": "#33FF57", "id": "GC", "label": "GC", "shape": "dot", "size": 10, "title": "GC (ORG)"}, {"color": "#33FF57", "id": "GCV", "label": "GCV", "shape": "dot", "size": 10, "title": "GCV (ORG)"}, {"color": "#33FF57", "id": "C57/BL6", "label": "C57/BL6", "shape": "dot", "size": 10, "title": "C57/BL6 (ORG)"}, {"color": "#8fb9a8", "id": "Space radiation damage rescued by inhibition of key spaceflight associated miRNAs", "label": "Space radiation damage rescued by inhibition of key spacefli", "shape": "dot", "size": 20, "title": "Space radiation damage rescued by inhibition of key spaceflight associated miRNAs"}, {"color": "#33FF57", "id": "miR-125b-5p", "label": "miR-125b-5p", "shape": "dot", "size": 10, "title": "miR-125b-5p (ORG)"}, {"color": "#33FF57", "id": "3D", "label": "3D", "shape": "dot", "size": 10, "title": "3D (ORG)"}, {"color": "#33FF57", "id": "Galactic Cosmic Rays", "label": "Galactic Cosmic Rays", "shape": "dot", "size": 10, "title": "Galactic Cosmic Rays (ORG)"}, {"color": "#33FF57", "id": "Fig.1a", "label": "Fig.1a", "shape": "dot", "size": 10, "title": "Fig.1a (ORG)"}, {"color": "#33FF57", "id": "GCR", "label": "GCR", "shape": "dot", "size": 10, "title": "GCR (ORG)"}, {"color": "#8fb9a8", "id": "Toward countering muscle and bone loss with spaceflight: GSK3 as a potential target", "label": "Toward countering muscle and bone loss with spaceflight: GSK", "shape": "dot", "size": 20, "title": "Toward countering muscle and bone loss with spaceflight: GSK3 as a potential target"}, {"color": "#33FF57", "id": "EDL", "label": "EDL", "shape": "dot", "size": 10, "title": "EDL (ORG)"}, {"color": "#33FF57", "id": "VIV", "label": "VIV", "shape": "dot", "size": 10, "title": "VIV (ORG)"}, {"color": "#33FF57", "id": "BuOE", "label": "BuOE", "shape": "dot", "size": 10, "title": "BuOE (ORG)"}, {"color": "#33FF57", "id": "the NASA Life Sciences Data Archive Institutional Scientific Collection Biospecimen Sharing Program", "label": "the NASA Life Sciences Data Archive Inst", "shape": "dot", "size": 10, "title": "the NASA Life Sciences Data Archive Institutional Scientific Collection Biospecimen Sharing Program (ORG)"}, {"color": "#8fb9a8", "id": "Inspiration4 data access through the NASA Open Science Data Repository", "label": "Inspiration4 data access through the NASA Open Science Data ", "shape": "dot", "size": 20, "title": "Inspiration4 data access through the NASA Open Science Data Repository"}, {"color": "#8fb9a8", "id": "Predicting how varying moisture conditions impact the microbiome of dust collected from the International Space Station", "label": "Predicting how varying moisture conditions impact the microb", "shape": "dot", "size": 20, "title": "Predicting how varying moisture conditions impact the microbiome of dust collected from the International Space Station"}, {"color": "#33FF57", "id": "ResultsHere", "label": "ResultsHere", "shape": "dot", "size": 10, "title": "ResultsHere (ORG)"}, {"color": "#33FF57", "id": "Video Abstract", "label": "Video Abstract", "shape": "dot", "size": 10, "title": "Video Abstract (ORG)"}, {"color": "#8fb9a8", "id": "Reanalysis of the Mars500 experiment reveals common gut microbiome alterations in astronauts induced by long-duration confinement", "label": "Reanalysis of the Mars500 experiment reveals common gut micr", "shape": "dot", "size": 20, "title": "Reanalysis of the Mars500 experiment reveals common gut microbiome alterations in astronauts induced by long-duration confinement"}, {"color": "#33FF57", "id": "Amplicon", "label": "Amplicon", "shape": "dot", "size": 10, "title": "Amplicon (ORG)"}, {"color": "#33FF57", "id": "Bacteroidetes", "label": "Bacteroidetes", "shape": "dot", "size": 10, "title": "Bacteroidetes (ORG)"}, {"color": "#3357FF", "id": "Actinobacteria", "label": "Actinobacteria", "shape": "dot", "size": 10, "title": "Actinobacteria (GPE)"}, {"color": "#3357FF", "id": "Verrucomicrobia", "label": "Verrucomicrobia", "shape": "dot", "size": 10, "title": "Verrucomicrobia (GPE)"}, {"color": "#3357FF", "id": "Proteobacteria", "label": "Proteobacteria", "shape": "dot", "size": 10, "title": "Proteobacteria (GPE)"}, {"color": "#8fb9a8", "id": "Inter-agency perspective: Translating advances in biomarker discovery and medical countermeasures development between terrestrial and space radiation environments", "label": "Inter-agency perspective: Translating advances in biomarker ", "shape": "dot", "size": 20, "title": "Inter-agency perspective: Translating advances in biomarker discovery and medical countermeasures development between terrestrial and space radiation environments"}, {"color": "#3357FF", "id": "U.S.", "label": "U.S.", "shape": "dot", "size": 10, "title": "U.S. (GPE)"}, {"color": "#33FF57", "id": "NCI", "label": "NCI", "shape": "dot", "size": 10, "title": "NCI (ORG)"}, {"color": "#3357FF", "id": "NIAID", "label": "NIAID", "shape": "dot", "size": 10, "title": "NIAID (GPE)"}, {"color": "#33FF57", "id": "NIH", "label": "NIH", "shape": "dot", "size": 10, "title": "NIH (ORG)"}, {"color": "#8fb9a8", "id": "NASA GeneLab derived microarray studies ofMus musculusandHomo sapiensorganisms in altered gravitational conditions", "label": "NASA GeneLab derived microarray studies ofMus musculusandHom", "shape": "dot", "size": 20, "title": "NASA GeneLab derived microarray studies ofMus musculusandHomo sapiensorganisms in altered gravitational conditions"}, {"color": "#33FF57", "id": "CNS", "label": "CNS", "shape": "dot", "size": 10, "title": "CNS (ORG)"}, {"color": "#33FF57", "id": "ofMus", "label": "ofMus", "shape": "dot", "size": 10, "title": "ofMus (ORG)"}, {"color": "#3357FF", "id": "Santucci", "label": "Santucci", "shape": "dot", "size": 10, "title": "Santucci (GPE)"}, {"color": "#33FF57", "id": "Ngf", "label": "Ngf", "shape": "dot", "size": 10, "title": "Ngf (ORG)"}, {"color": "#8fb9a8", "id": "Genetic dissection of the Arabidopsis spaceflight transcriptome: Are some responses dispensable for the physiological adaptation of plants to spaceflight?", "label": "Genetic dissection of the Arabidopsis spaceflight transcript", "shape": "dot", "size": 20, "title": "Genetic dissection of the Arabidopsis spaceflight transcriptome: Are some responses dispensable for the physiological adaptation of plants to spaceflight?"}, {"color": "#33FF57", "id": "Arabidopsis", "label": "Arabidopsis", "shape": "dot", "size": 10, "title": "Arabidopsis (ORG)"}, {"color": "#33FF57", "id": "Veggie", "label": "Veggie", "shape": "dot", "size": 10, "title": "Veggie (ORG)"}, {"color": "#8fb9a8", "id": "Comparative genomic analysis ofCohnella hashimotonissp. nov. isolated from the International Space Station", "label": "Comparative genomic analysis ofCohnella hashimotonissp. nov.", "shape": "dot", "size": 20, "title": "Comparative genomic analysis ofCohnella hashimotonissp. nov. isolated from the International Space Station"}, {"color": "#33FF57", "id": "F6_2S_P_1", "label": "F6_2S_P_1", "shape": "dot", "size": 10, "title": "F6_2S_P_1 (ORG)"}, {"color": "#33FF57", "id": "Mb", "label": "Mb", "shape": "dot", "size": 10, "title": "Mb (ORG)"}, {"color": "#3357FF", "id": "Illumina", "label": "Illumina", "shape": "dot", "size": 10, "title": "Illumina (GPE)"}, {"color": "#8fb9a8", "id": "Biocontrol in built environments to reduce pathogen exposure and infection risk", "label": "Biocontrol in built environments to reduce pathogen exposure", "shape": "dot", "size": 20, "title": "Biocontrol in built environments to reduce pathogen exposure and infection risk"}, {"color": "#33FF57", "id": "COVID-19", "label": "COVID-19", "shape": "dot", "size": 10, "title": "COVID-19 (ORG)"}, {"color": "#8fb9a8", "id": "Human Neural Stem Cells Flown into Space Proliferate and Generate Young Neurons", "label": "Human Neural Stem Cells Flown into Space Proliferate and Gen", "shape": "dot", "size": 20, "title": "Human Neural Stem Cells Flown into Space Proliferate and Generate Young Neurons"}, {"color": "#33FF57", "id": "Space Environment", "label": "Space Environment", "shape": "dot", "size": 10, "title": "Space Environment (ORG)"}, {"color": "#33FF57", "id": "Kiwi", "label": "Kiwi", "shape": "dot", "size": 10, "title": "Kiwi (ORG)"}, {"color": "#33FF57", "id": "Airbus", "label": "Airbus", "shape": "dot", "size": 10, "title": "Airbus (ORG)"}, {"color": "#33FF57", "id": "Friedrichshafen", "label": "Friedrichshafen", "shape": "dot", "size": 10, "title": "Friedrichshafen (ORG)"}]);
+                  edges = new vis.DataSet([{"from": "Impact of microgravity and lunar gravity on murine skeletal and immune systems during space travel", "to": "MHU"}, {"from": "Impact of microgravity and lunar gravity on murine skeletal and immune systems during space travel", "to": "MHU-1"}, {"from": "Impact of microgravity and lunar gravity on murine skeletal and immune systems during space travel", "to": "the Transporting Cage Unit"}, {"from": "Impact of microgravity and lunar gravity on murine skeletal and immune systems during space travel", "to": "TCU"}, {"from": "Impact of microgravity and lunar gravity on murine skeletal and immune systems during space travel", "to": "Dragon Space Vehicle"}, {"from": "Multi-omics analysis of multiple missions to space reveal a theme of lipid dysregulation in mouse liver", "to": "hematoxylin"}, {"from": "Multi-omics analysis of multiple missions to space reveal a theme of lipid dysregulation in mouse liver", "to": "H\u0026E"}, {"from": "Multi-omics analysis of multiple missions to space reveal a theme of lipid dysregulation in mouse liver", "to": "ORO"}, {"from": "Multi-omics analysis of multiple missions to space reveal a theme of lipid dysregulation in mouse liver", "to": "ISS"}, {"from": "Multi-omics analysis of multiple missions to space reveal a theme of lipid dysregulation in mouse liver", "to": "the Rodent Research 1"}, {"from": "ISS", "to": "GeneLab Database Analyses Suggest Long-Term Impact of Space Radiation on the Cardiovascular System by the Activation ofFYNThrough Reactive Oxygen Species"}, {"from": "ISS", "to": "Genetic dissection of the Arabidopsis spaceflight transcriptome: Are some responses dispensable for the physiological adaptation of plants to spaceflight?"}, {"from": "ISS", "to": "Comparative genomic analysis ofCohnella hashimotonissp. nov. isolated from the International Space Station"}, {"from": "ISS", "to": "Human Neural Stem Cells Flown into Space Proliferate and Generate Young Neurons"}, {"from": "Circulating miRNA Spaceflight Signature Reveals Targets for Countermeasure Development", "to": "Morey-Holton"}, {"from": "Circulating miRNA Spaceflight Signature Reveals Targets for Countermeasure Development", "to": "Globus"}, {"from": "Circulating miRNA Spaceflight Signature Reveals Targets for Countermeasure Development", "to": "IR"}, {"from": "Circulating miRNA Spaceflight Signature Reveals Targets for Countermeasure Development", "to": "Mewaldt"}, {"from": "Circulating miRNA Spaceflight Signature Reveals Targets for Countermeasure Development", "to": "miRNAs"}, {"from": "Microgravity Induces Pelvic Bone Loss through Osteoclastic Activity, Osteocytic Osteolysis, and Osteoblastic Cell Cycle Inhibition by CDKN1a/p21", "to": "Post-FlightAll"}, {"from": "Microgravity Induces Pelvic Bone Loss through Osteoclastic Activity, Osteocytic Osteolysis, and Osteoblastic Cell Cycle Inhibition by CDKN1a/p21", "to": "the Pelvic Region"}, {"from": "Microgravity Induces Pelvic Bone Loss through Osteoclastic Activity, Osteocytic Osteolysis, and Osteoblastic Cell Cycle Inhibition by CDKN1a/p21", "to": "BV/TV"}, {"from": "Microgravity Induces Pelvic Bone Loss through Osteoclastic Activity, Osteocytic Osteolysis, and Osteoblastic Cell Cycle Inhibition by CDKN1a/p21", "to": "linear"}, {"from": "Microgravity Induces Pelvic Bone Loss through Osteoclastic Activity, Osteocytic Osteolysis, and Osteoblastic Cell Cycle Inhibition by CDKN1a/p21", "to": "\u03bcCT"}, {"from": "GeneLab Database Analyses Suggest Long-Term Impact of Space Radiation on the Cardiovascular System by the Activation ofFYNThrough Reactive Oxygen Species", "to": "GeneLab"}, {"from": "GeneLab Database Analyses Suggest Long-Term Impact of Space Radiation on the Cardiovascular System by the Activation ofFYNThrough Reactive Oxygen Species", "to": "HUVEC"}, {"from": "GeneLab Database Analyses Suggest Long-Term Impact of Space Radiation on the Cardiovascular System by the Activation ofFYNThrough Reactive Oxygen Species", "to": "GLDS-52"}, {"from": "GeneLab Database Analyses Suggest Long-Term Impact of Space Radiation on the Cardiovascular System by the Activation ofFYNThrough Reactive Oxygen Species", "to": "ANOVA"}, {"from": "GeneLab", "to": "NASA GeneLab Platform Utilized for Biological Response to Space Radiation in Animal Models"}, {"from": "NASA GeneLab Platform Utilized for Biological Response to Space Radiation in Animal Models", "to": "NASA"}, {"from": "NASA GeneLab Platform Utilized for Biological Response to Space Radiation in Animal Models", "to": "GeneLab Data System"}, {"from": "NASA GeneLab Platform Utilized for Biological Response to Space Radiation in Animal Models", "to": "GLDS"}, {"from": "NASA GeneLab Platform Utilized for Biological Response to Space Radiation in Animal Models", "to": "the International Space Station"}, {"from": "NASA", "to": "Inter-agency perspective: Translating advances in biomarker discovery and medical countermeasures development between terrestrial and space radiation environments"}, {"from": "NASA", "to": "Genetic dissection of the Arabidopsis spaceflight transcriptome: Are some responses dispensable for the physiological adaptation of plants to spaceflight?"}, {"from": "the International Space Station", "to": "Predicting how varying moisture conditions impact the microbiome of dust collected from the International Space Station"}, {"from": "the International Space Station", "to": "NASA GeneLab derived microarray studies ofMus musculusandHomo sapiensorganisms in altered gravitational conditions"}, {"from": "Dose- and Ion-Dependent Effects in the Oxidative Stress Response to Space-Like Radiation Exposure in the Skeletal System", "to": "TBI"}, {"from": "Dose- and Ion-Dependent Effects in the Oxidative Stress Response to Space-Like Radiation Exposure in the Skeletal System", "to": "Tibiae"}, {"from": "Dose- and Ion-Dependent Effects in the Oxidative Stress Response to Space-Like Radiation Exposure in the Skeletal System", "to": "Dunnett"}, {"from": "Dose- and Ion-Dependent Effects in the Oxidative Stress Response to Space-Like Radiation Exposure in the Skeletal System", "to": "Brookhaven National Lab"}, {"from": "Dose- and Ion-Dependent Effects in the Oxidative Stress Response to Space-Like Radiation Exposure in the Skeletal System", "to": "BNL"}, {"from": "Mice in Bion-M 1 Space Mission: Training and Selection", "to": "DiscussionGroup"}, {"from": "Mice in Bion-M 1 Space Mission: Training and Selection", "to": "SFV"}, {"from": "Mice in Bion-M 1 Space Mission: Training and Selection", "to": "GC"}, {"from": "Mice in Bion-M 1 Space Mission: Training and Selection", "to": "GCV"}, {"from": "Mice in Bion-M 1 Space Mission: Training and Selection", "to": "C57/BL6"}, {"from": "GC", "to": "Toward countering muscle and bone loss with spaceflight: GSK3 as a potential target"}, {"from": "GC", "to": "Comparative genomic analysis ofCohnella hashimotonissp. nov. isolated from the International Space Station"}, {"from": "Space radiation damage rescued by inhibition of key spaceflight associated miRNAs", "to": "miR-125b-5p"}, {"from": "Space radiation damage rescued by inhibition of key spaceflight associated miRNAs", "to": "3D"}, {"from": "Space radiation damage rescued by inhibition of key spaceflight associated miRNAs", "to": "Galactic Cosmic Rays"}, {"from": "Space radiation damage rescued by inhibition of key spaceflight associated miRNAs", "to": "Fig.1a"}, {"from": "Space radiation damage rescued by inhibition of key spaceflight associated miRNAs", "to": "GCR"}, {"from": "Toward countering muscle and bone loss with spaceflight: GSK3 as a potential target", "to": "EDL"}, {"from": "Toward countering muscle and bone loss with spaceflight: GSK3 as a potential target", "to": "VIV"}, {"from": "Toward countering muscle and bone loss with spaceflight: GSK3 as a potential target", "to": "BuOE"}, {"from": "Toward countering muscle and bone loss with spaceflight: GSK3 as a potential target", "to": "the NASA Life Sciences Data Archive Institutional Scientific Collection Biospecimen Sharing Program"}, {"from": "Predicting how varying moisture conditions impact the microbiome of dust collected from the International Space Station", "to": "ResultsHere"}, {"from": "Predicting how varying moisture conditions impact the microbiome of dust collected from the International Space Station", "to": "Video Abstract"}, {"from": "Reanalysis of the Mars500 experiment reveals common gut microbiome alterations in astronauts induced by long-duration confinement", "to": "Amplicon"}, {"from": "Reanalysis of the Mars500 experiment reveals common gut microbiome alterations in astronauts induced by long-duration confinement", "to": "Bacteroidetes"}, {"from": "Reanalysis of the Mars500 experiment reveals common gut microbiome alterations in astronauts induced by long-duration confinement", "to": "Actinobacteria"}, {"from": "Reanalysis of the Mars500 experiment reveals common gut microbiome alterations in astronauts induced by long-duration confinement", "to": "Verrucomicrobia"}, {"from": "Reanalysis of the Mars500 experiment reveals common gut microbiome alterations in astronauts induced by long-duration confinement", "to": "Proteobacteria"}, {"from": "Inter-agency perspective: Translating advances in biomarker discovery and medical countermeasures development between terrestrial and space radiation environments", "to": "U.S."}, {"from": "Inter-agency perspective: Translating advances in biomarker discovery and medical countermeasures development between terrestrial and space radiation environments", "to": "NCI"}, {"from": "Inter-agency perspective: Translating advances in biomarker discovery and medical countermeasures development between terrestrial and space radiation environments", "to": "NIAID"}, {"from": "Inter-agency perspective: Translating advances in biomarker discovery and medical countermeasures development between terrestrial and space radiation environments", "to": "NIH"}, {"from": "NASA GeneLab derived microarray studies ofMus musculusandHomo sapiensorganisms in altered gravitational conditions", "to": "CNS"}, {"from": "NASA GeneLab derived microarray studies ofMus musculusandHomo sapiensorganisms in altered gravitational conditions", "to": "ofMus"}, {"from": "NASA GeneLab derived microarray studies ofMus musculusandHomo sapiensorganisms in altered gravitational conditions", "to": "Santucci"}, {"from": "NASA GeneLab derived microarray studies ofMus musculusandHomo sapiensorganisms in altered gravitational conditions", "to": "Ngf"}, {"from": "Genetic dissection of the Arabidopsis spaceflight transcriptome: Are some responses dispensable for the physiological adaptation of plants to spaceflight?", "to": "Arabidopsis"}, {"from": "Genetic dissection of the Arabidopsis spaceflight transcriptome: Are some responses dispensable for the physiological adaptation of plants to spaceflight?", "to": "Veggie"}, {"from": "Comparative genomic analysis ofCohnella hashimotonissp. nov. isolated from the International Space Station", "to": "F6_2S_P_1"}, {"from": "Comparative genomic analysis ofCohnella hashimotonissp. nov. isolated from the International Space Station", "to": "Mb"}, {"from": "Comparative genomic analysis ofCohnella hashimotonissp. nov. isolated from the International Space Station", "to": "Illumina"}, {"from": "Biocontrol in built environments to reduce pathogen exposure and infection risk", "to": "COVID-19"}, {"from": "Human Neural Stem Cells Flown into Space Proliferate and Generate Young Neurons", "to": "Space Environment"}, {"from": "Human Neural Stem Cells Flown into Space Proliferate and Generate Young Neurons", "to": "Kiwi"}, {"from": "Human Neural Stem Cells Flown into Space Proliferate and Generate Young Neurons", "to": "Airbus"}, {"from": "Human Neural Stem Cells Flown into Space Proliferate and Generate Young Neurons", "to": "Friedrichshafen"}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "repulsion": {
+            "centralGravity": 0.2,
+            "damping": 0.09,
+            "nodeDistance": 200,
+            "springConstant": 0.05,
+            "springLength": 300
+        },
+        "solver": "repulsion",
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>
