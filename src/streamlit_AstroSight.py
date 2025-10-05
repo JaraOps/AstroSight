@@ -29,16 +29,21 @@ except Exception:
 
     import nltk
     import os
+    from pathlib import Path
 
-    # Force download punkt to a writable path
-    nltk_data_path = os.path.expanduser('~/nltk_data')
-    os.makedirs(nltk_data_path, exist_ok=True)
+    # Create a writable data path
+    nltk_data_path = Path.home() / "nltk_data"
+    nltk_data_path.mkdir(parents=True, exist_ok=True)
 
-    nltk.download('punkt', download_dir=nltk_data_path)
+    # Download the needed tokenizer
+    nltk.download("punkt", download_dir=str(nltk_data_path))
 
-    # Fix the 'punkt_tab' bug (create an empty folder so NLTK stops crashing)
-    punkt_tab_path = os.path.join(nltk_data_path, 'tokenizers', 'punkt_tab', 'english')
-    os.makedirs(punkt_tab_path, exist_ok=True)
+    # Manually create the fake "punkt_tab" folder to stop the crash
+    punkt_tab_dir = nltk_data_path / "tokenizers" / "punkt_tab" / "english"
+    punkt_tab_dir.mkdir(parents=True, exist_ok=True)
+
+    # Tell NLTK where to look
+    nltk.data.path.append(str(nltk_data_path))
 
 # CONFIG
 DEFAULT_DATAFILE = "final_analyzed_data.csv"

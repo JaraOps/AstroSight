@@ -1,4 +1,4 @@
-import nltk
+nltk
 nltk.download('punkt')
 
 # 2. FIX: spaCy model download for Knowledge Graph
