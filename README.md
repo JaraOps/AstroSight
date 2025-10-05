@@ -45,19 +45,16 @@ You need Python 3.9+ installed.
 Bash
 
 git clone https://github.com/JaraOps/AstroSight
+
 cd AstroSight
 
 2. Install Dependencies
 Install all required Python packages from your environment. You will need to create a requirements.txt file listing all the libraries used (e.g., streamlit, pandas, spacy, pyvis, networkx, sumy, scikit-learn, etc.).
 
-Bash
-
 pip install -r requirements.txt
 
 3. Download the spaCy Model
 The Knowledge Graph requires the small English language model. You must link this model for spaCy to function correctly:
-
-Bash
 
 python -m spacy download en_core_web_sm
 python -m spacy link en_core_web_sm en_core_web_sm --force
@@ -67,8 +64,6 @@ Ensure the project data file, final_analyzed_data.csv, is located in the same di
 
 5. Run the Application
 Start the Streamlit application from your terminal:
-
-Bash
 
 streamlit run streamlit_AstroSight.py
 The application will open in your default web browser.
