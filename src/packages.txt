@@ -1,5 +1,5 @@
-# 1. FIX: NLTK punkt resource for LexRank Summarizer
-python -c "import nltk; nltk.download('punkt')"
+import nltk
+nltk.download('punkt')
 
 # 2. FIX: spaCy model download for Knowledge Graph
 python -m spacy download en_core_web_sm
