@@ -235,7 +235,7 @@ if selected_years and YEAR_COL in filtered.columns:
     filtered = filtered[filtered[YEAR_COL].isin(selected_years)]
 
 st.sidebar.markdown(f"**Results:** {len(filtered)} publications")
-
+st.sidebar.markdown("AstroSight by The Chilean Orbital / JaraOps")
 
 @st.cache_data
 def convert_df_to_csv(df):
@@ -363,8 +363,7 @@ with col2:
 
     st.markdown("---")
 
-    # --- GLOBAL KEYWORD TABLE (Stable Analysis) ---
-    st.header("🌐 Global Keyword Landscape (Top 10)")
+    st.header("Global Keyword Landscape (Top 10)")
     st.write("A quantitative view of the most frequent concepts extracted across all papers.")
     top_keywords_table = get_top_keywords(df, KEYWORDS_COL)
     if not top_keywords_table.empty:
@@ -372,8 +371,7 @@ with col2:
 
     st.markdown("---")
 
-    # --- TAG OVERLAP ENGINE (The Stable Discovery Feature) ---
-    st.header("🔑 Inter-document Tag Overlap Engine")
+    st.header("Inter-document Tag Overlap Engine")
     st.write("Instantly links papers based on shared core topics extracted by our NLP pipeline.")
 
     # Define the selectbox for user input
