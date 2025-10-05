@@ -3,10 +3,11 @@
 import os
 from typing import List
 from pathlib import Path
-import collections # Needed for get_top_keywords, must be imported
-import nltk # CRITICAL: Import NLTK for punkt download
+import collections
+import nltk # CRITICAL: Import NLTK
+import sys # For checking Python version if needed
 
-# *** SLOW IMPORTS REMOVED: numpy, cosine_similarity are GONE. ***
+# --- SLOW IMPORTS REMOVED: numpy, cosine_similarity are GONE. ---
 
 import pandas as pd
 import streamlit as st
@@ -14,15 +15,21 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lex_rank import LexRankSummarizer
 
-# --- CRITICAL FIX FOR NLTK PUNKT ---
+# --- THE ABSOLUTE, FINAL FIX FOR NLTK PUNKT ---
 try:
-    # Try to find the resource first
-    import nltk.data
+    # 1. Explicitly set NLTK to look in the current working directory (the most reliable location)
+    current_dir = os.getcwd()
+    if current_dir not in nltk.data.path:
+        nltk.data.path.append(current_dir)
+
+    # 2. Check if the resource is available
     nltk.data.find('tokenizers/punkt')
-except (LookupError):
-    # This runs the download directly inside the app, guaranteeing the resource is available
-    nltk.download('punkt')
-# -----------------------------------
+
+except LookupError:
+    # 3. If not found, download it directly to the writable current directory
+    nltk.download('punkt', download_dir=os.getcwd())
+# -----------------------------------------------
+
 
 # NLP/Graph (Only importing spacy/pyvis here, not at the top level)
 try:
@@ -86,13 +93,13 @@ def summarize_with_lexrank(text, sentence_count=3):
         sentence_count = len(text.split('.'))
 
     try:
+        # The NLTK fix above ensures this line works by loading the tokenizer
         parser = PlaintextParser.from_string(text, Tokenizer("english"))
         summarizer = LexRankSummarizer()
         summary = summarizer(parser.document, sentence_count)
         return " ".join([str(sentence) for sentence in summary])
 
     except Exception as e:
-        # This error is now fixed by the NLTK block above
         return f"Error during local summarization: {e}"
 
 
@@ -102,7 +109,7 @@ def get_tag_similarity(df, reference_title):
     # 1. Get the keywords for the selected article
     ref_keywords_raw = df[df[TITLE_COL] == reference_title][KEYWORDS_COL].iloc[0]
 
-    # FIX: Check if string, then split and clean (The necessary fix for string keywords)
+    # FIX: Check if string, then split and clean
     if isinstance(ref_keywords_raw, str):
         split_char = ';' if ';' in ref_keywords_raw else ','
         ref_keywords = set([k.strip() for k in ref_keywords_raw.split(split_char) if k.strip()])
@@ -403,5 +410,3 @@ with col2:
                 })
 
             st.dataframe(results_list)
-
-
