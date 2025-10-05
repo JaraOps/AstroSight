@@ -3,12 +3,10 @@
 import os
 from typing import List
 from pathlib import Path
-import collections  # Import needed for global keyword analysis
+import collections  # Needed for get_top_keywords, must be imported
+import nltk  # CRITICAL: Import NLTK for punkt download
 
-import nltk
-# REMOVED SLOW IMPORTS:
-# from sklearn.metrics.pairwise import cosine_similarity
-# import numpy as np
+# *** SLOW IMPORTS REMOVED: numpy, cosine_similarity are GONE. ***
 
 import pandas as pd
 import streamlit as st
@@ -16,7 +14,16 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lex_rank import LexRankSummarizer
 
-# NLP/Graph
+# --- CRITICAL FIX FOR NLTK PUNKT ---
+try:
+    # Try to find the resource first
+    nltk.data.find('tokenizers/punkt')
+except (nltk.downloader.DownloadError, LookupError):
+    # This runs the download directly inside the app, guaranteeing the resource is available
+    nltk.download('punkt')
+# -----------------------------------
+
+# NLP/Graph (Only importing spacy/pyvis here, not at the top level)
 try:
     import spacy
     from pyvis.network import Network
@@ -25,14 +32,6 @@ try:
     SPACY_AVAILABLE = True
 except Exception:
     SPACY_AVAILABLE = False
-    #import nltk
-    import streamlit as st
-
-    try:
-        nltk.data.find('tokenizers/punkt')
-    except nltk.downloader.DownloadError:
-        # This runs the download directly inside the app, guaranteeing the resource is available
-        nltk.download('punkt')
 
 # CONFIG
 DEFAULT_DATAFILE = "final_analyzed_data.csv"
@@ -93,21 +92,22 @@ def summarize_with_lexrank(text, sentence_count=3):
         return " ".join([str(sentence) for sentence in summary])
 
     except Exception as e:
-        return f"Error during local summarization: {e}. **Action required:** Check your 'packages.txt' file for the NLTK 'punkt' download command."
+        # This error should now be fixed by the NLTK block above
+        return f"Error during local summarization: {e}"
 
 
-# --- TAG OVERLAP ENGINE (FIXED BUG) ---
+# --- TAG OVERLAP ENGINE (CRITICAL BUG FIX IMPLEMENTED) ---
 def get_tag_similarity(df, reference_title):
     # 1. Get the keywords for the selected article
     ref_keywords_raw = df[df[TITLE_COL] == reference_title][KEYWORDS_COL].iloc[0]
 
-    # FIX: Check if string, then split and clean (Handles the TypeError bug)
+    # FIX: Check if string, then split and clean
     if isinstance(ref_keywords_raw, str):
-        # Assumes keywords are separated by semicolon or comma from the pre-processing
         split_char = ';' if ';' in ref_keywords_raw else ','
         ref_keywords = set([k.strip() for k in ref_keywords_raw.split(split_char) if k.strip()])
     else:
-        ref_keywords = set()
+        # If it's a list or set already (unlikely with CSV loading), use it
+        ref_keywords = set(ref_keywords_raw) if isinstance(ref_keywords_raw, (list, set)) else set()
 
     similarity_scores = {}
 
@@ -120,7 +120,7 @@ def get_tag_similarity(df, reference_title):
                 split_char = ';' if ';' in other_keywords_raw else ','
                 other_keywords = set([k.strip() for k in other_keywords_raw.split(split_char) if k.strip()])
             else:
-                other_keywords = set()
+                other_keywords = set(other_keywords_raw) if isinstance(other_keywords_raw, (list, set)) else set()
 
             # Score is the count of shared tags
             score = len(ref_keywords.intersection(other_keywords))
@@ -131,6 +131,7 @@ def get_tag_similarity(df, reference_title):
     return top_similar
 
 
+# NEW HELPER: For Global Keywords Table
 @st.cache_data
 def get_top_keywords(df, keywords_column):
     all_keywords = []
@@ -151,7 +152,6 @@ def get_top_keywords(df, keywords_column):
     return top_keywords_df
 
 
-# Graph functions (Unchanged)
 @st.cache_data
 def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[str], top_n_entities=5):
     if not SPACY_AVAILABLE:
@@ -160,9 +160,8 @@ def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[
     try:
         nlp = spacy.load("en_core_web_sm")
     except Exception as e:
-        st.error(f"Error loading spaCy model: {e}. Ensure it is downloaded/linked via 'packages.txt'.")
+        st.error(f"Error loading spaCy model: {e}")
         return None
-    # ... (rest of the build_entity_graph function logic) ...
 
     G = nx.Graph()
 
@@ -174,7 +173,7 @@ def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[
     for i, txt in enumerate(texts):
         title = titles[i]
         G.add_node(title, type="doc", color=COLOR_MAP['DOC'])
-        doc = nlp(txt[:5000])  # Limit text length for speed
+        doc = nlp(txt[:5000])
 
         ents_by_label = {}
         for ent in doc.ents:
@@ -183,13 +182,11 @@ def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[
                 if norm_ent not in ents_by_label:
                     ents_by_label[norm_ent] = ent.label_
 
-        # adds top N entities
         for ent_text, ent_label in list(ents_by_label.items())[:top_n_entities]:
             if not G.has_node(ent_text):
-                net_label = ent_text  # Use raw text for label
+                net_label = ent_text
                 net_title = f"{ent_text} ({ent_label})"
                 net_color = COLOR_MAP.get(ent_label, '#CCCCCC')
-
                 G.add_node(ent_text, type="entity", label=net_label, color=net_color, title=net_title)
 
             G.add_edge(title, ent_text)
@@ -227,13 +224,6 @@ datafile = st.sidebar.text_input("Data CSV path", value=DEFAULT_DATAFILE)
 df = load_data()
 
 if df.empty:
-    st.stop()
-
-# --- IMPORTANT: The call to get_document_vectors has been definitively removed here ---
-
-# Basic column checks
-if TEXT_COL not in df.columns:
-    st.error(f"Required text column '{TEXT_COL}' not found in data.")
     st.stop()
 
 # Filters
@@ -274,7 +264,6 @@ with col1:
     titles = filtered[TITLE_COL].fillna('Untitled').tolist()
     sel = st.selectbox("Choose an article (by title)", options=titles)
 
-    # Get the index of the selected article (safely)
     try:
         idx = filtered[filtered[TITLE_COL].fillna('Untitled') == sel].index[0]
         # small metadata
@@ -344,7 +333,7 @@ with col2:
         # --- KNOWLEDGE GRAPH SECTION ---
         st.subheader("Knowledge Graph (entities)")
         if not SPACY_AVAILABLE:
-            st.info("Graph is disabled (spaCy/pyvis dependencies missing).")
+            st.info("Graph is disabled (spaCy/pyvis dependencies missing or model not linked).")
         else:
             st.write(
                 "Visualizes connections between the selected documents and extracted entities (e.g., ORGs, Events).")
@@ -382,7 +371,7 @@ with col2:
 
         st.markdown("---")
 
-        # --- GLOBAL KEYWORD TABLE (Stable Analysis) ---
+        # --- GLOBAL KEYWORD TABLE (New Stable Feature) ---
         st.header("🌐 Global Keyword Landscape (Top 10)")
         st.write("A quantitative view of the most frequent concepts extracted across all papers.")
         top_keywords_table = get_top_keywords(df, KEYWORDS_COL)
@@ -395,7 +384,6 @@ with col2:
         st.header("🔑 Inter-document Tag Overlap Engine")
         st.write("Instantly links papers based on shared core topics extracted by our NLP pipeline.")
 
-        # Define the selectbox for user input
         reference_title = st.selectbox(
             "Select an Article to find look-alikes:",
             options=df[TITLE_COL].tolist(),
