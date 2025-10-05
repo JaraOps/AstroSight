@@ -1,10 +1,10 @@
-# create web application with streamlit including knowledge graph, add AI for purpose driven summaries
+#create web application with streamlit including knowledge graph, add AI for purpose driven summaries
 
 import os
 from typing import List
 from pathlib import Path
-import collections  # Needed for get_top_keywords, must be imported
-import nltk  # CRITICAL: Import NLTK for punkt download
+import collections # Needed for get_top_keywords, must be imported
+import nltk # CRITICAL: Import NLTK for punkt download
 
 # *** SLOW IMPORTS REMOVED: numpy, cosine_similarity are GONE. ***
 
@@ -17,8 +17,9 @@ from sumy.summarizers.lex_rank import LexRankSummarizer
 # --- CRITICAL FIX FOR NLTK PUNKT ---
 try:
     # Try to find the resource first
+    import nltk.data
     nltk.data.find('tokenizers/punkt')
-except (nltk.downloader.DownloadError, LookupError):
+except (LookupError):
     # This runs the download directly inside the app, guaranteeing the resource is available
     nltk.download('punkt')
 # -----------------------------------
@@ -28,7 +29,6 @@ try:
     import spacy
     from pyvis.network import Network
     import networkx as nx
-
     SPACY_AVAILABLE = True
 except Exception:
     SPACY_AVAILABLE = False
@@ -43,8 +43,7 @@ AUTHORS_COL = "Authors"
 YEAR_COL = "Year"
 PMC_COL = "PMC_ID"
 
-
-# HELPER FUNCTIONS
+#HELPER FUNCTIONS
 def get_absolute_path(filename):
     BASE_DIR = Path(__file__).parent
     return BASE_DIR / filename
@@ -52,6 +51,7 @@ def get_absolute_path(filename):
 
 @st.cache_data
 def load_data():
+
     full_path = get_absolute_path(DEFAULT_DATAFILE)
 
     if not full_path.exists():
@@ -92,22 +92,22 @@ def summarize_with_lexrank(text, sentence_count=3):
         return " ".join([str(sentence) for sentence in summary])
 
     except Exception as e:
-        # This error should now be fixed by the NLTK block above
+        # This error is now fixed by the NLTK block above
         return f"Error during local summarization: {e}"
 
 
 # --- TAG OVERLAP ENGINE (CRITICAL BUG FIX IMPLEMENTED) ---
 def get_tag_similarity(df, reference_title):
+
     # 1. Get the keywords for the selected article
     ref_keywords_raw = df[df[TITLE_COL] == reference_title][KEYWORDS_COL].iloc[0]
 
-    # FIX: Check if string, then split and clean
+    # FIX: Check if string, then split and clean (The necessary fix for string keywords)
     if isinstance(ref_keywords_raw, str):
         split_char = ';' if ';' in ref_keywords_raw else ','
         ref_keywords = set([k.strip() for k in ref_keywords_raw.split(split_char) if k.strip()])
     else:
-        # If it's a list or set already (unlikely with CSV loading), use it
-        ref_keywords = set(ref_keywords_raw) if isinstance(ref_keywords_raw, (list, set)) else set()
+        ref_keywords = set()
 
     similarity_scores = {}
 
@@ -120,7 +120,7 @@ def get_tag_similarity(df, reference_title):
                 split_char = ';' if ';' in other_keywords_raw else ','
                 other_keywords = set([k.strip() for k in other_keywords_raw.split(split_char) if k.strip()])
             else:
-                other_keywords = set(other_keywords_raw) if isinstance(other_keywords_raw, (list, set)) else set()
+                 other_keywords = set()
 
             # Score is the count of shared tags
             score = len(ref_keywords.intersection(other_keywords))
@@ -139,16 +139,16 @@ def get_top_keywords(df, keywords_column):
     for keywords in df[keywords_column].fillna(''):
         if isinstance(keywords, str):
             if ';' in keywords:
-                all_keywords.extend([k.strip() for k in keywords.split(';') if k.strip()])
+                 all_keywords.extend([k.strip() for k in keywords.split(';') if k.strip()])
             else:
-                all_keywords.extend([k.strip() for k in keywords.split(',') if k.strip()])
+                 all_keywords.extend([k.strip() for k in keywords.split(',') if k.strip()])
         elif isinstance(keywords, list):
-            all_keywords.extend(keywords)
+             all_keywords.extend(keywords)
 
     keyword_counts = collections.Counter(all_keywords)
 
     top_keywords_df = pd.DataFrame(keyword_counts.most_common(10),
-                                   columns=['Keyword', 'Frequency'])
+                                     columns=['Keyword', 'Frequency'])
     return top_keywords_df
 
 
@@ -214,11 +214,10 @@ def draw_pyvis_graph(G: nx.Graph, height="600px", width="100%"):
 
     return net
 
-
 # UI
 st.title("AstroSight 🇨🇱 by The Chilean Orbital")
 
-# Sidebar: Data files and quick settings
+#Sidebar: Data files and quick settings
 st.sidebar.header("Data & Settings")
 datafile = st.sidebar.text_input("Data CSV path", value=DEFAULT_DATAFILE)
 df = load_data()
@@ -244,19 +243,19 @@ if query:
         '').str.lower().str.contains(q) | filtered[TEXT_COL].fillna('').str.lower().str.contains(q)
     filtered = filtered[mask]
 
+
 if selected_years and YEAR_COL in filtered.columns:
-    filtered = filtered[filtered[YEAR_COL].isin(selected_years)]
+    filtered=filtered[filtered[YEAR_COL].isin(selected_years)]
 
 st.sidebar.markdown(f"**Results:** {len(filtered)} publications")
-
 
 @st.cache_data
 def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
 
-# Main layout: list on left, details on right
-col1, col2 = st.columns([1, 2])
+#Main layout: list on left, details on right
+col1, col2 = st.columns([1,2])
 
 with col1:
     st.subheader("Publications")
@@ -275,13 +274,12 @@ with col1:
         st.markdown(f"**Theme:** {filtered.loc[idx, THEME_COL] if THEME_COL in filtered.columns else 'N/A'}")
     except IndexError:
         st.warning("No article selected or filter is too strict.")
-        idx = -1  # Set a safe index value
+        idx = -1 # Set a safe index value
 
     st.markdown("---")
     st.subheader("Export / Batch")
 
-    to_export = st.multiselect("Select rows to export (titles)", options=filtered[TITLE_COL].tolist(),
-                               key='export_titles_selector')
+    to_export = st.multiselect("Select rows to export (titles)", options=filtered[TITLE_COL].tolist(), key='export_titles_selector')
 
     if to_export:
         outdf = filtered[filtered[TITLE_COL].isin(to_export)]
@@ -297,11 +295,12 @@ with col1:
     else:
         st.info("Select titles above to enable the download button.")
 
+
 with col2:
     st.subheader("Article details & tools")
     st.markdown(f"### {sel}")
 
-    if idx != -1:  # Only proceed if an article is selected
+    if idx != -1: # Only proceed if an article is selected
         text = filtered.loc[idx, TEXT_COL]
         st.markdown("**Keywords (TF-IDF):**")
         st.write(filtered.loc[idx, KEYWORDS_COL])
@@ -335,8 +334,7 @@ with col2:
         if not SPACY_AVAILABLE:
             st.info("Graph is disabled (spaCy/pyvis dependencies missing or model not linked).")
         else:
-            st.write(
-                "Visualizes connections between the selected documents and extracted entities (e.g., ORGs, Events).")
+            st.write("Visualizes connections between the selected documents and extracted entities (e.g., ORGs, Events).")
 
             NER_LABELS = ["PERSON", "ORG", "GPE", "EVENT", "PRODUCT", "WORK_OF_ART"]
             selected_labels = st.multiselect(
@@ -380,6 +378,7 @@ with col2:
 
         st.markdown("---")
 
+
         # --- TAG OVERLAP ENGINE (The Stable Discovery Feature) ---
         st.header("🔑 Inter-document Tag Overlap Engine")
         st.write("Instantly links papers based on shared core topics extracted by our NLP pipeline.")
@@ -404,3 +403,5 @@ with col2:
                 })
 
             st.dataframe(results_list)
+
+
