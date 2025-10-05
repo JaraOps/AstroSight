@@ -133,7 +133,7 @@ def get_tag_similarity(df, Title):
         other_title = row[TITLE_COL]
         if other_title != Title:
             other_keywords_raw = row[KEYWORDS_COL] or ""
-            other_keywords = {k.strip().lower() for k in other_keywords_raw.split(';') if k.strip()}
+            other_keywords = {k.strip().lower() for k in other_keywords_raw.split(',') if k.strip()}
 
             score = len(ref_keywords.intersection(other_keywords))
             similarity_scores[other_title] = score
