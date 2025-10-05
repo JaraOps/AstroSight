@@ -115,6 +115,7 @@ def get_top_keywords(df, keywords_column):
 
 # --- TAG OVERLAP ENGINE (The Stable Discovery Feature) ---
 def get_tag_similarity(df, Title):
+    st.write(df[[TITLE_COL, KEYWORDS_COL]].head(10))
     ref_row = df[df[TITLE_COL] == Title]
     if ref_row.empty:
         return []
