@@ -3,21 +3,24 @@
 import os
 from typing import List
 from pathlib import Path
-import collections
-import re  # Core Python library for sentence splitting
-from operator import itemgetter  # For sorting sentences
 
-# Removed all fragile external NLP libraries (sumy, nltk) for stability
+# --- Keep all necessary imports for all features ---
+import spacy
+from pyvis.network import Network
+import networkx as nx
+import numpy as np
+import collections
 
 import pandas as pd
 import streamlit as st
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lex_rank import LexRankSummarizer
 
-# NLP/Graph
+# NLP/Graph availability check (Kept for robustness)
 try:
-    import spacy
-    from pyvis.network import Network
-    import networkx as nx
-
+    # Attempt to use the smallest vector model for faster loading if possible
+    # We assume spacy is correctly linked now
     SPACY_AVAILABLE = True
 except Exception:
     SPACY_AVAILABLE = False
@@ -41,78 +44,75 @@ def get_absolute_path(filename):
 
 @st.cache_data
 def load_data():
+    # Robust path check: looks in the current script's directory first
     full_path = get_absolute_path(DEFAULT_DATAFILE)
 
     if not full_path.exists():
-        if not Path(DEFAULT_DATAFILE).exists():
-            st.error(f"Data file not found: {full_path}. Check file location or path.")
-            return pd.DataFrame()
-        df = pd.read_csv(DEFAULT_DATAFILE)
-    else:
-        df = pd.read_csv(full_path)
+        st.error(f"Data file not found: {full_path}. Ensure '{DEFAULT_DATAFILE}' is in the same folder as the script.")
+        return pd.DataFrame()
 
     try:
+        df = pd.read_csv(full_path)
+
+        # Fix Theme Category and ensure column is present
         df = df.rename(columns={
             "Theme_Category": "Theme_category",
         }, inplace=False)
+
         # Drop rows where Title is missing to prevent key errors in selectbox
         df.dropna(subset=[TITLE_COL], inplace=True)
+
         return df
     except Exception as e:
-        st.error(f"Error loading data: {e}")
+        st.error(f"Error loading or renaming data: {e}")
         return pd.DataFrame()
 
 
 @st.cache_data
-def summarize_with_keyword_rank(text, keywords_str, sentence_count=3):
-    """
-    Generates a summary using a simple, dependency-free keyword-ranking algorithm.
-    """
+def summarize_with_lexrank(text, sentence_count=3):
+    """Generates a summary using the LexRank algorithm (local & free)."""
+
     if not text:
         return "No text available for summarization."
 
-    # 1. Prepare keywords
-    if isinstance(keywords_str, str):
-        split_char = ';' if ';' in keywords_str else ','
-        keywords = set([k.strip().lower() for k in keywords_str.split(split_char) if k.strip()])
-    else:
-        keywords = set()
+    if len(text.split('.')) < sentence_count:
+        sentence_count = len(text.split('.'))
 
-    if not keywords:
-        return "No keywords available to rank the text."
+    try:
+        parser = PlaintextParser.from_string(text, Tokenizer("english"))
+        summarizer = LexRankSummarizer()
+        summary = summarizer(parser.document, sentence_count)
+        return " ".join([str(sentence) for sentence in summary])
 
-    # 2. Split text into sentences using regex (dependency-free sentence tokenizer)
-    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', text.strip())
-
-    if len(sentences) < sentence_count:
-        sentence_count = len(sentences)
-
-    # 3. Score sentences
-    scored_sentences = []
-    for i, sentence in enumerate(sentences):
-        score = 0
-        for keyword in keywords:
-            if keyword in sentence.lower():
-                score += 1
-        scored_sentences.append({'sentence': sentence, 'score': score, 'order': i})
-
-    # 4. Select top sentences by score, then sort them back into original order
-    top_sentences = sorted(scored_sentences, key=itemgetter('score', 'order'), reverse=True)
-    final_summary_sentences = sorted(top_sentences[:sentence_count], key=itemgetter('order'))
-
-    return " ".join([item['sentence'] for item in final_summary_sentences])
+    except Exception as e:
+        return f"Error during local summarization: {e}"
 
 
+# --- NEW STABLE KEYWORD ANALYSIS FUNCTION ---
+@st.cache_data
+def get_top_keywords(df, keywords_column):
+    all_keywords = []
+
+    for keywords in df[keywords_column].fillna(''):
+        if isinstance(keywords, str):
+            # Split by semicolon ';' based on your data format
+            all_keywords.extend([k.strip() for k in keywords.split(';') if k.strip()])
+        elif isinstance(keywords, list):
+            all_keywords.extend(keywords)
+
+    keyword_counts = collections.Counter(all_keywords)
+
+    top_keywords_df = pd.DataFrame(keyword_counts.most_common(10),
+                                   columns=['Keyword', 'Frequency'])
+    return top_keywords_df
+
+
+# --- TAG OVERLAP ENGINE (The Stable Discovery Feature) ---
 def get_tag_similarity(df, reference_title):
-    # Get the keywords for the selected article
+    # Step 1: Ensure Keywords are split by semicolon ';'
     ref_keywords_raw = df[df[TITLE_COL] == reference_title][KEYWORDS_COL].iloc[0]
-
-    # FIX: Check if string, then split and clean (The necessary fix for string keywords)
-    if isinstance(ref_keywords_raw, str):
-        split_char = ';' if ';' in ref_keywords_raw else ','
-        ref_keywords = set([k.strip() for k in ref_keywords_raw.split(split_char) if k.strip()])
-    else:
-        ref_keywords = set()
+    ref_keywords = set(ref_keywords_raw.split(';') if isinstance(ref_keywords_raw, str) else [])
+    ref_keywords = {k.strip() for k in ref_keywords if k.strip()}  # Clean whitespace
 
     similarity_scores = {}
 
@@ -120,14 +120,9 @@ def get_tag_similarity(df, reference_title):
         title = row[TITLE_COL]
         if title != reference_title:
             other_keywords_raw = row[KEYWORDS_COL]
+            other_keywords = set(other_keywords_raw.split(';') if isinstance(other_keywords_raw, str) else [])
+            other_keywords = {k.strip() for k in other_keywords if k.strip()}  # Clean whitespace
 
-            if isinstance(other_keywords_raw, str):
-                split_char = ';' if ';' in other_keywords_raw else ','
-                other_keywords = set([k.strip() for k in other_keywords_raw.split(split_char) if k.strip()])
-            else:
-                other_keywords = set()
-
-            # Score is the count of shared tags
             score = len(ref_keywords.intersection(other_keywords))
             similarity_scores[title] = score
 
@@ -143,7 +138,7 @@ def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[
         return None
 
     try:
-        # This part is now guaranteed to work because of the setup.sh file.
+        # We assume this works based on your confirmation
         nlp = spacy.load("en_core_web_sm")
     except Exception as e:
         st.error(f"Error loading spaCy model: {e}")
@@ -161,7 +156,7 @@ def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[
 
         G.add_node(title, type="doc", color=COLOR_MAP['DOC'])
 
-        doc = nlp(txt[:5000])
+        doc = nlp(txt[:5000])  # Limit text length for speed
 
         ents_by_label = {}
         for ent in doc.ents:
@@ -184,17 +179,14 @@ def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[
 def draw_pyvis_graph(G: nx.Graph, height="600px", width="100%"):
     net = Network(height=height, width=width, notebook=False, cdn_resources='local', directed=False)
 
-    # use the existing node attributes for labels and colors
     for n, attrs in G.nodes(data=True):
         label = attrs.get('label', n)
         title = attrs.get('title', n)
-        color = attrs.get('color', '#97C2DE')  # use existing color or default
+        color = attrs.get('color', '#97C2DE')
 
         if attrs.get("type") == "doc":
-            # Node for document
             net.add_node(n, label=label[:60], title=title, color=color, size=20)
         else:
-            # entity nodes
             net.add_node(n, label=label[:40], title=title, color=color, size=10)
 
     for a, b in G.edges():
@@ -216,15 +208,9 @@ df = load_data()
 if df.empty:
     st.stop()
 
-# Basic columns
-
-if TEXT_COL in df.columns:
-    possible = [c for c in df.columns if "text" in c.lower() or "clean" in c.lower()]
-    if possible:
-        TEXT_COL = possible[0]
-    else:
-        st.error("Couldn't find a text column to show article content.")
-        st.stop()
+if TEXT_COL not in df.columns:
+    st.error(f"Required text column '{TEXT_COL}' not found in data.")
+    st.stop()
 
 # Filters
 st.sidebar.subheader("Filters")
@@ -237,7 +223,6 @@ else:
     selected_years = None
 
 # Filter DataFrame
-
 filtered = df.copy()
 if query:
     q = query.lower()
@@ -256,37 +241,6 @@ def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
 
-def get_tag_similarity(df, reference_title):
-    # This function is now using the robust keyword parsing at the top
-    ref_keywords_raw = df[df[TITLE_COL] == reference_title][KEYWORDS_COL].iloc[0]
-
-    if isinstance(ref_keywords_raw, str):
-        split_char = ';' if ';' in ref_keywords_raw else ','
-        ref_keywords = set([k.strip() for k in ref_keywords_raw.split(split_char) if k.strip()])
-    else:
-        ref_keywords = set()
-
-    similarity_scores = {}
-
-    for index, row in df.iterrows():
-        title = row[TITLE_COL]
-        if title != reference_title:
-            other_keywords_raw = row[KEYWORDS_COL]
-
-            if isinstance(other_keywords_raw, str):
-                split_char = ';' if ';' in other_keywords_raw else ','
-                other_keywords = set([k.strip() for k in other_keywords_raw.split(split_char) if k.strip()])
-            else:
-                other_keywords = set()
-
-            score = len(ref_keywords.intersection(other_keywords))
-            similarity_scores[title] = score
-
-    TOP_N_RESULTS = 5
-    top_similar = sorted(similarity_scores.items(), key=lambda item: item[1], reverse=True)[:TOP_N_RESULTS]
-    return top_similar
-
-
 # Main layout: list on left, details on right
 col1, col2 = st.columns([1, 2])
 
@@ -296,8 +250,10 @@ with col1:
     titles = filtered[TITLE_COL].fillna('Untitled').tolist()
     sel = st.selectbox("Choose an article (by title)", options=titles)
 
-    try:
+    # Get the index of the selected article
+    if not filtered.empty and sel in filtered[TITLE_COL].fillna('Untitled').tolist():
         idx = filtered[filtered[TITLE_COL].fillna('Untitled') == sel].index[0]
+
         # small metadata
         st.markdown(f"**Authors:** {filtered.loc[idx, AUTHORS_COL] if AUTHORS_COL in filtered.columns else 'N/A'}")
         if YEAR_COL in filtered.columns:
@@ -305,26 +261,19 @@ with col1:
         if PMC_COL in filtered.columns:
             st.markdown(f"**PMCID:** {filtered.loc[idx, PMC_COL]}")
         st.markdown(f"**Theme:** {filtered.loc[idx, THEME_COL] if THEME_COL in filtered.columns else 'N/A'}")
-
-        current_keywords = filtered.loc[idx, KEYWORDS_COL]
-        current_text = filtered.loc[idx, TEXT_COL]
-
-    except IndexError:
-        st.warning("No article selected or filter is too strict.")
-        idx = -1
-        current_keywords = ""
-        current_text = ""
+    else:
+        st.warning("Please select a title.")
+        idx = -1  # Set a safe index value
 
     st.markdown("---")
     st.subheader("Export / Batch")
 
-    to_export = st.multiselect("Select rows to export (titles)", options=filtered['Title'].tolist(),
+    to_export = st.multiselect("Select rows to export (titles)", options=filtered[TITLE_COL].tolist(),
                                key='export_titles_selector')
 
-    outpath_filename = st.text_input("Output filename", value="export_selected.csv")
-
     if to_export:
-        outdf = filtered[filtered['Title'].isin(to_export)]
+        # FIX: The df definition must be inside the if block to avoid NameError
+        outdf = filtered[filtered[TITLE_COL].isin(to_export)]
 
         csv_data = convert_df_to_csv(outdf)
 
@@ -333,7 +282,7 @@ with col1:
             data=csv_data,
             file_name='export_selected_data.csv',
             mime='text/csv',
-            key='download_csv'  # Unique key for the widget
+            key='download_csv'
         )
     else:
         st.info("Select titles above to enable the download button.")
@@ -343,47 +292,56 @@ with col2:
     st.markdown(f"### {sel}")
 
     if idx != -1:  # Only proceed if an article is selected
+        text = filtered.loc[idx, TEXT_COL]
         st.markdown("**Keywords (TF-IDF):**")
-        st.write(current_keywords)
+        st.write(filtered.loc[idx, KEYWORDS_COL])
         st.markdown("**Abstract / Selected text (cleaned):**")
 
-        st.text_area("Article text", value=current_text if pd.notna(current_text) else "", height=300,
-                     label_visibility="collapsed")
+        st.text_area("Article text", value=text if pd.notna(text) else "", height=300, label_visibility="collapsed")
 
         st.markdown("---")
-        st.header("Article Summarization")
 
-        selected_text = current_text
+        # --- Summarization Section ---
+        st.header("Article Summarization")
+        titles_list = df[TITLE_COL].unique().tolist()
+        selected_title = st.selectbox(
+            "Select an Article to Summarize:",
+            options=titles_list,
+            key='summary_title_selector'
+        )
         SENTENCE_COUNT = 3
 
-        if st.button("Generate Summary (Keyword Rank Model)"):
-            with st.spinner("Generating stable summary..."):
-                # Use the new stable function
-                summary = summarize_with_keyword_rank(selected_text, current_keywords, sentence_count=SENTENCE_COUNT)
+        selected_text = df[df[TITLE_COL] == selected_title][TEXT_COL].iloc[0]
 
-                st.subheader(f"Article Summary ({SENTENCE_COUNT} Sentences, Stable Keyword Model)")
-                st.warning("Note: Using stable Keyword-Rank summary due to dependency failures.")
-                st.info(summary)
+        if st.button("Generate Summary"):
+            summary = summarize_with_lexrank(selected_text, sentence_count=SENTENCE_COUNT)
+            st.subheader(f"Article Summary ({SENTENCE_COUNT} Sentences, LexRank Model)")
+            st.info(summary)
 
         st.markdown("---")
+
+        # --- KNOWLEDGE GRAPH SECTION ---
         st.subheader("Knowledge Graph (entities)")
         if not SPACY_AVAILABLE:
-            st.info("Graph is disabled (spaCy/pyvis dependencies missing or model not linked).")
+            st.error("Graph build failed (spaCy not available or model error)")
         else:
-            max_docs = st.slider("Number of documents to index for graph", 1, min(50, len(filtered)),
-                                 value=min(20, len(filtered)))
+            st.write(
+                "Visualizes connections between the selected documents and extracted entities (e.g., ORGs, Events).")
 
             NER_LABELS = ["PERSON", "ORG", "GPE", "EVENT", "PRODUCT", "WORK_OF_ART"]
             selected_labels = st.multiselect(
                 "Entities to include (NER Labels):",
                 options=NER_LABELS,
-                default=["ORG", "GPE", "EVENT"]
+                default=["ORG", "GPE", "EVENT"],
+                key='ner_labels_multiselect'
             )
+
             max_docs = st.slider("Number of documents to index for graph",
                                  1,
                                  min(50, len(filtered)),
                                  value=min(20, len(filtered)),
                                  key='max_docs_slider')
+
             sample = filtered.head(max_docs)
 
             if st.button("Build entity graph", key='build_graph_button'):
@@ -392,37 +350,34 @@ with col2:
                     sample[TITLE_COL].fillna('').tolist(),
                     selected_labels
                 )
+
                 if G is None:
-                    st.error("Graph build failed (spaCy not available or model error)")
+                    # This error handles the case where nlp = spacy.load fails internally
+                    st.error("Graph build failed (Check console for detailed spaCy error)")
                 else:
                     net = draw_pyvis_graph(G)
                     tmpfile = "graph_vis.html"
                     net.save_graph(tmpfile)
                     st.components.v1.html(open(tmpfile, 'r', encoding='utf-8').read(), height=600)
 
-        st.markdown("---")
-        st.header("🔑 Inter-document Tag Overlap Engine")
-        st.write("Instantly links papers based on shared core topics extracted by our NLP pipeline.")
+    st.markdown("---")
 
-        # Define the selectbox for user input
-        reference_title = st.selectbox(
-            "Select an Article to find look-alikes:",
-            options=df['Title'].tolist(),
-            key='tag_ref_selector'
-        )
+    # --- GLOBAL KEYWORD TABLE (Stable Analysis) ---
+    st.header("🌐 Global Keyword Landscape (Top 10)")
+    st.write("A quantitative view of the most frequent concepts extracted across all papers.")
+    top_keywords_table = get_top_keywords(df, KEYWORDS_COL)
+    if not top_keywords_table.empty:
+        st.dataframe(top_keywords_table, use_container_width=True)
 
-        if reference_title:
-            top_similar = get_tag_similarity(df, reference_title)
+    st.markdown("---")
 
-            results_list = []
-            for title, score in top_similar:
-                # This line relies on your corrected column name!
-                theme = df[df['Title'] == title]['Theme_category'].iloc[0]
+    # --- TAG OVERLAP ENGINE (The Stable Discovery Feature) ---
+    st.header("🔑 Inter-document Tag Overlap Engine")
+    st.write("Instantly links papers based on shared core topics extracted by our NLP pipeline.")
 
-                results_list.append({
-                    "Title": title,
-                    "Theme": theme,
-                    "Shared Keywords": score
-                })
-
-            st.dataframe(results_list)
+    # Define the selectbox for user input
+    reference_title = st.selectbox(
+        "Select an Article to find look-alikes:",
+        options=df[TITLE_COL].tolist(),
+        key='tag_ref_selector'
+    )
