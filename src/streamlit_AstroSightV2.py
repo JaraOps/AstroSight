@@ -1,41 +1,23 @@
-#create web application with streamlit including knowledge graph, add AI for purpose driven summaries
+# create web application with streamlit including knowledge graph, add AI for purpose driven summaries
 
 import os
 from typing import List
 from pathlib import Path
 import collections
-import nltk # CRITICAL: Import NLTK
-import sys # For checking Python version if needed
+# CRITICAL: NLTK and Sumy are GONE, replaced by Gensim
 
-# --- SLOW IMPORTS REMOVED: numpy, cosine_similarity are GONE. ---
+# Removed slow/unused imports: numpy, cosine_similarity
 
 import pandas as pd
 import streamlit as st
-from sumy.parsers.plaintext import PlaintextParser
-from sumy.nlp.tokenizers import Tokenizer
-from sumy.summarizers.lex_rank import LexRankSummarizer
+from gensim.summarization import summarize as gensim_summarize  # Robust alternative
 
-# --- THE ABSOLUTE, FINAL FIX FOR NLTK PUNKT ---
-try:
-    # 1. Explicitly set NLTK to look in the current working directory (the most reliable location)
-    current_dir = os.getcwd()
-    if current_dir not in nltk.data.path:
-        nltk.data.path.append(current_dir)
-
-    # 2. Check if the resource is available
-    nltk.data.find('tokenizers/punkt')
-
-except LookupError:
-    # 3. If not found, download it directly to the writable current directory
-    nltk.download('punkt', download_dir=os.getcwd())
-# -----------------------------------------------
-
-
-# NLP/Graph (Only importing spacy/pyvis here, not at the top level)
+# NLP/Graph
 try:
     import spacy
     from pyvis.network import Network
     import networkx as nx
+
     SPACY_AVAILABLE = True
 except Exception:
     SPACY_AVAILABLE = False
@@ -50,7 +32,8 @@ AUTHORS_COL = "Authors"
 YEAR_COL = "Year"
 PMC_COL = "PMC_ID"
 
-#HELPER FUNCTIONS
+
+# HELPER FUNCTIONS
 def get_absolute_path(filename):
     BASE_DIR = Path(__file__).parent
     return BASE_DIR / filename
@@ -58,7 +41,6 @@ def get_absolute_path(filename):
 
 @st.cache_data
 def load_data():
-
     full_path = get_absolute_path(DEFAULT_DATAFILE)
 
     if not full_path.exists():
@@ -73,7 +55,6 @@ def load_data():
         df = df.rename(columns={
             "Theme_Category": "Theme_category",
         }, inplace=False)
-
         # Drop rows where Title is missing to prevent key errors in selectbox
         df.dropna(subset=[TITLE_COL], inplace=True)
         return df
@@ -83,29 +64,47 @@ def load_data():
 
 
 @st.cache_data
-def summarize_with_lexrank(text, sentence_count=3):
-    """Generates a summary using the LexRank algorithm (local & free)."""
+def summarize_with_gensim(text, sentence_count=3):
+    """Generates a summary using Gensim's TextRank (local, robust, no NLTK dependency)."""
 
-    if not text:
-        return "No text available for summarization."
+    if not text or len(text.split()) < 30:  # Gensim needs a reasonable amount of text
+        return "Not enough text available for summarization."
 
-    if len(text.split('.')) < sentence_count:
-        sentence_count = len(text.split('.'))
+    # Ratio is calculated based on the number of sentences you want
+    word_count = len(text.split())
+
+    # Calculate summary size as a fraction of the total words.
+    # We target sentence_count but Gensim uses ratio/words. A typical sentence is 15-25 words.
+    # To get ~3 sentences from 100 words, ratio is 0.05.
+    # Let's use word_count to set the ratio based on a target length.
+    target_length = sentence_count * 20  # Assume 20 words per sentence
+
+    if target_length >= word_count:
+        ratio = 1.0
+    else:
+        ratio = target_length / word_count
+
+    # The minimum ratio Gensim uses is often > 0.1
+    ratio = max(0.1, ratio)
 
     try:
-        # The NLTK fix above ensures this line works by loading the tokenizer
-        parser = PlaintextParser.from_string(text, Tokenizer("english"))
-        summarizer = LexRankSummarizer()
-        summary = summarizer(parser.document, sentence_count)
-        return " ".join([str(sentence) for sentence in summary])
+        # Gensim takes 'ratio' (percentage of total words) or 'word_count'
+        summary = gensim_summarize(text, ratio=ratio)
+
+        if not summary:
+            # Fallback if ratio fails, try sentence count approach (less precise in Gensim)
+            summary = gensim_summarize(text, word_count=target_length)
+
+        return summary if summary else "Summary could not be generated."
 
     except Exception as e:
-        return f"Error during local summarization: {e}"
+        # Catch any potential Gensim errors gracefully
+        return f"Error during Gensim summarization: {e}"
 
 
 # --- TAG OVERLAP ENGINE (CRITICAL BUG FIX IMPLEMENTED) ---
+# NOTE: Using the robust split logic previously added to handle string keywords.
 def get_tag_similarity(df, reference_title):
-
     # 1. Get the keywords for the selected article
     ref_keywords_raw = df[df[TITLE_COL] == reference_title][KEYWORDS_COL].iloc[0]
 
@@ -127,7 +126,7 @@ def get_tag_similarity(df, reference_title):
                 split_char = ';' if ';' in other_keywords_raw else ','
                 other_keywords = set([k.strip() for k in other_keywords_raw.split(split_char) if k.strip()])
             else:
-                 other_keywords = set()
+                other_keywords = set()
 
             # Score is the count of shared tags
             score = len(ref_keywords.intersection(other_keywords))
@@ -146,16 +145,16 @@ def get_top_keywords(df, keywords_column):
     for keywords in df[keywords_column].fillna(''):
         if isinstance(keywords, str):
             if ';' in keywords:
-                 all_keywords.extend([k.strip() for k in keywords.split(';') if k.strip()])
+                all_keywords.extend([k.strip() for k in keywords.split(';') if k.strip()])
             else:
-                 all_keywords.extend([k.strip() for k in keywords.split(',') if k.strip()])
+                all_keywords.extend([k.strip() for k in keywords.split(',') if k.strip()])
         elif isinstance(keywords, list):
-             all_keywords.extend(keywords)
+            all_keywords.extend(keywords)
 
     keyword_counts = collections.Counter(all_keywords)
 
     top_keywords_df = pd.DataFrame(keyword_counts.most_common(10),
-                                     columns=['Keyword', 'Frequency'])
+                                   columns=['Keyword', 'Frequency'])
     return top_keywords_df
 
 
@@ -221,10 +220,11 @@ def draw_pyvis_graph(G: nx.Graph, height="600px", width="100%"):
 
     return net
 
+
 # UI
 st.title("AstroSight 🇨🇱 by The Chilean Orbital")
 
-#Sidebar: Data files and quick settings
+# Sidebar: Data files and quick settings
 st.sidebar.header("Data & Settings")
 datafile = st.sidebar.text_input("Data CSV path", value=DEFAULT_DATAFILE)
 df = load_data()
@@ -250,19 +250,19 @@ if query:
         '').str.lower().str.contains(q) | filtered[TEXT_COL].fillna('').str.lower().str.contains(q)
     filtered = filtered[mask]
 
-
 if selected_years and YEAR_COL in filtered.columns:
-    filtered=filtered[filtered[YEAR_COL].isin(selected_years)]
+    filtered = filtered[filtered[YEAR_COL].isin(selected_years)]
 
 st.sidebar.markdown(f"**Results:** {len(filtered)} publications")
+
 
 @st.cache_data
 def convert_df_to_csv(df):
     return df.to_csv(index=False).encode('utf-8')
 
 
-#Main layout: list on left, details on right
-col1, col2 = st.columns([1,2])
+# Main layout: list on left, details on right
+col1, col2 = st.columns([1, 2])
 
 with col1:
     st.subheader("Publications")
@@ -281,12 +281,13 @@ with col1:
         st.markdown(f"**Theme:** {filtered.loc[idx, THEME_COL] if THEME_COL in filtered.columns else 'N/A'}")
     except IndexError:
         st.warning("No article selected or filter is too strict.")
-        idx = -1 # Set a safe index value
+        idx = -1  # Set a safe index value
 
     st.markdown("---")
     st.subheader("Export / Batch")
 
-    to_export = st.multiselect("Select rows to export (titles)", options=filtered[TITLE_COL].tolist(), key='export_titles_selector')
+    to_export = st.multiselect("Select rows to export (titles)", options=filtered[TITLE_COL].tolist(),
+                               key='export_titles_selector')
 
     if to_export:
         outdf = filtered[filtered[TITLE_COL].isin(to_export)]
@@ -302,12 +303,11 @@ with col1:
     else:
         st.info("Select titles above to enable the download button.")
 
-
 with col2:
     st.subheader("Article details & tools")
     st.markdown(f"### {sel}")
 
-    if idx != -1: # Only proceed if an article is selected
+    if idx != -1:  # Only proceed if an article is selected
         text = filtered.loc[idx, TEXT_COL]
         st.markdown("**Keywords (TF-IDF):**")
         st.write(filtered.loc[idx, KEYWORDS_COL])
@@ -330,8 +330,9 @@ with col2:
         selected_text = df[df[TITLE_COL] == selected_title][TEXT_COL].iloc[0]
 
         if st.button("Generate Summary"):
-            summary = summarize_with_lexrank(selected_text, sentence_count=SENTENCE_COUNT)
-            st.subheader(f"Article Summary ({SENTENCE_COUNT} Sentences, LexRank Model)")
+            # Use the new Gensim function
+            summary = summarize_with_gensim(selected_text, sentence_count=SENTENCE_COUNT)
+            st.subheader(f"Article Summary (Gensim TextRank Model)")
             st.info(summary)
 
         st.markdown("---")
@@ -341,7 +342,8 @@ with col2:
         if not SPACY_AVAILABLE:
             st.info("Graph is disabled (spaCy/pyvis dependencies missing or model not linked).")
         else:
-            st.write("Visualizes connections between the selected documents and extracted entities (e.g., ORGs, Events).")
+            st.write(
+                "Visualizes connections between the selected documents and extracted entities (e.g., ORGs, Events).")
 
             NER_LABELS = ["PERSON", "ORG", "GPE", "EVENT", "PRODUCT", "WORK_OF_ART"]
             selected_labels = st.multiselect(
@@ -381,10 +383,9 @@ with col2:
         st.write("A quantitative view of the most frequent concepts extracted across all papers.")
         top_keywords_table = get_top_keywords(df, KEYWORDS_COL)
         if not top_keywords_table.empty:
-            st.dataframe(top_keywords_table, use_container_width=True)
+            st.dataframe(top_keywords_table, width='stretch')
 
         st.markdown("---")
-
 
         # --- TAG OVERLAP ENGINE (The Stable Discovery Feature) ---
         st.header("🔑 Inter-document Tag Overlap Engine")
@@ -409,4 +410,4 @@ with col2:
                     "Shared Keywords": score
                 })
 
-            st.dataframe(results_list)
+            st.dataframe(results_list, width='stretch')

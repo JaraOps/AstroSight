@@ -7,4 +7,6 @@ sumy
 nltk
 scikit-learn
 numpy
+gensim
+scipy==1.10.1  # Pin to a version known to have stable binary wheels
 en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0.tar.gz

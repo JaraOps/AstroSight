@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# 1. NLTK PUNKT FIX (Already in code, but good to keep as backup)
-python -m nltk.downloader punkt
-
-# 2. SPAcY FIX (Essential for Knowledge Graph)
+# This is for spaCy linkage, which is a known good practice.
 python -m spacy link en_core_web_sm en_core_web_sm --force
+
+# We are no longer adding NLTK here, as the Python code now handles Gensim instead.
