@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 1. NLTK PUNKT FIX (Essential for Summarization)
+# 1. NLTK PUNKT FIX (Already in code, but good to keep as backup)
 python -m nltk.downloader punkt
 
 # 2. SPAcY FIX (Essential for Knowledge Graph)
