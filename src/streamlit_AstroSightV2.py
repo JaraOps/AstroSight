@@ -394,9 +394,8 @@ with col2:
             })
 
         st.dataframe(
-            results_list,
+            pd.DataFrame(results_list),  # ← wrap your list here
             use_container_width=True,
-            # Highlight the column that shows the ranking metric
             column_config={
                 "Shared Keywords": st.column_config.NumberColumn(
                     "Shared Keywords",
