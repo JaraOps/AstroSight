@@ -4,13 +4,13 @@ import os
 from typing import List
 from pathlib import Path
 import collections
-# CRITICAL: NLTK and Sumy are GONE, replaced by Gensim
+import re  # Core Python library for sentence splitting
+from operator import itemgetter  # For sorting sentences
 
-# Removed slow/unused imports: numpy, cosine_similarity
+# Removed all external NLP libraries: nltk, sumy, gensim, scipy
 
 import pandas as pd
 import streamlit as st
-from gensim.summarization import summarize as gensim_summarize  # Robust alternative
 
 # NLP/Graph
 try:
@@ -64,51 +64,57 @@ def load_data():
 
 
 @st.cache_data
-def summarize_with_gensim(text, sentence_count=3):
-    """Generates a summary using Gensim's TextRank (local, robust, no NLTK dependency)."""
+def summarize_with_keyword_rank(text, keywords_str, sentence_count=3):
+    """
+    Generates a summary using a simple, dependency-free keyword-ranking algorithm.
+    It ranks sentences based on the number of keywords they contain.
+    """
+    if not text:
+        return "No text available for summarization."
 
-    if not text or len(text.split()) < 30:  # Gensim needs a reasonable amount of text
-        return "Not enough text available for summarization."
-
-    # Ratio is calculated based on the number of sentences you want
-    word_count = len(text.split())
-
-    # Calculate summary size as a fraction of the total words.
-    # We target sentence_count but Gensim uses ratio/words. A typical sentence is 15-25 words.
-    # To get ~3 sentences from 100 words, ratio is 0.05.
-    # Let's use word_count to set the ratio based on a target length.
-    target_length = sentence_count * 20  # Assume 20 words per sentence
-
-    if target_length >= word_count:
-        ratio = 1.0
+    # 1. Prepare keywords
+    if isinstance(keywords_str, str):
+        split_char = ';' if ';' in keywords_str else ','
+        keywords = set([k.strip().lower() for k in keywords_str.split(split_char) if k.strip()])
     else:
-        ratio = target_length / word_count
+        keywords = set()
 
-    # The minimum ratio Gensim uses is often > 0.1
-    ratio = max(0.1, ratio)
+    if not keywords:
+        return "No keywords available to rank the text."
 
-    try:
-        # Gensim takes 'ratio' (percentage of total words) or 'word_count'
-        summary = gensim_summarize(text, ratio=ratio)
+    # 2. Split text into sentences using regex (dependency-free sentence tokenizer)
+    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', text.strip())
 
-        if not summary:
-            # Fallback if ratio fails, try sentence count approach (less precise in Gensim)
-            summary = gensim_summarize(text, word_count=target_length)
+    # Ensure we don't try to summarize more sentences than exist
+    if len(sentences) < sentence_count:
+        sentence_count = len(sentences)
 
-        return summary if summary else "Summary could not be generated."
+    # 3. Score sentences
+    scored_sentences = []
+    for i, sentence in enumerate(sentences):
+        score = 0
+        for keyword in keywords:
+            if keyword in sentence.lower():
+                score += 1
+        scored_sentences.append({'sentence': sentence, 'score': score, 'order': i})
 
-    except Exception as e:
-        # Catch any potential Gensim errors gracefully
-        return f"Error during Gensim summarization: {e}"
+    # 4. Select top sentences by score
+    # Sort by score (descending), then by original order (ascending)
+    top_sentences = sorted(scored_sentences, key=itemgetter('score', 'order'), reverse=True)
+
+    # 5. Take the top N, then sort them back into original order
+    final_summary_sentences = sorted(top_sentences[:sentence_count], key=itemgetter('order'))
+
+    return " ".join([item['sentence'] for item in final_summary_sentences])
 
 
 # --- TAG OVERLAP ENGINE (CRITICAL BUG FIX IMPLEMENTED) ---
-# NOTE: Using the robust split logic previously added to handle string keywords.
+# NOTE: This function does not change.
 def get_tag_similarity(df, reference_title):
     # 1. Get the keywords for the selected article
     ref_keywords_raw = df[df[TITLE_COL] == reference_title][KEYWORDS_COL].iloc[0]
 
-    # FIX: Check if string, then split and clean
+    # FIX: Check if string, then split and clean (The necessary fix for string keywords)
     if isinstance(ref_keywords_raw, str):
         split_char = ';' if ';' in ref_keywords_raw else ','
         ref_keywords = set([k.strip() for k in ref_keywords_raw.split(split_char) if k.strip()])
@@ -138,6 +144,7 @@ def get_tag_similarity(df, reference_title):
 
 
 # NEW HELPER: For Global Keywords Table
+# NOTE: This function does not change.
 @st.cache_data
 def get_top_keywords(df, keywords_column):
     all_keywords = []
@@ -160,6 +167,7 @@ def get_top_keywords(df, keywords_column):
 
 @st.cache_data
 def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[str], top_n_entities=5):
+    # NOTE: This function remains the same, assuming spaCy installation is now stable.
     if not SPACY_AVAILABLE:
         return None
 
@@ -279,9 +287,16 @@ with col1:
         if PMC_COL in filtered.columns:
             st.markdown(f"**PMCID:** {filtered.loc[idx, PMC_COL]}")
         st.markdown(f"**Theme:** {filtered.loc[idx, THEME_COL] if THEME_COL in filtered.columns else 'N/A'}")
+
+        # Get keywords for the summary function
+        current_keywords = filtered.loc[idx, KEYWORDS_COL]
+        current_text = filtered.loc[idx, TEXT_COL]
+
     except IndexError:
         st.warning("No article selected or filter is too strict.")
         idx = -1  # Set a safe index value
+        current_keywords = ""
+        current_text = ""
 
     st.markdown("---")
     st.subheader("Export / Batch")
@@ -308,31 +323,24 @@ with col2:
     st.markdown(f"### {sel}")
 
     if idx != -1:  # Only proceed if an article is selected
-        text = filtered.loc[idx, TEXT_COL]
         st.markdown("**Keywords (TF-IDF):**")
-        st.write(filtered.loc[idx, KEYWORDS_COL])
+        st.write(current_keywords)
         st.markdown("**Abstract / Selected text (cleaned):**")
 
-        st.text_area("Article text", value=text if pd.notna(text) else "", height=300, label_visibility="collapsed")
+        st.text_area("Article text", value=current_text if pd.notna(current_text) else "", height=300,
+                     label_visibility="collapsed")
 
         st.markdown("---")
 
         # --- Summarization Section ---
         st.header("Article Summarization")
-        titles_list = df[TITLE_COL].unique().tolist()
-        selected_title = st.selectbox(
-            "Select an Article to Summarize:",
-            options=titles_list,
-            key='summary_title_selector'
-        )
+
         SENTENCE_COUNT = 3
 
-        selected_text = df[df[TITLE_COL] == selected_title][TEXT_COL].iloc[0]
-
         if st.button("Generate Summary"):
-            # Use the new Gensim function
-            summary = summarize_with_gensim(selected_text, sentence_count=SENTENCE_COUNT)
-            st.subheader(f"Article Summary (Gensim TextRank Model)")
+            # Use the simple, dependency-free function
+            summary = summarize_with_keyword_rank(current_text, current_keywords, sentence_count=SENTENCE_COUNT)
+            st.subheader(f"Article Summary (Keyword Rank Model)")
             st.info(summary)
 
         st.markdown("---")
