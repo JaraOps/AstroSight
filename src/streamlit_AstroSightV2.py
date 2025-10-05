@@ -15,14 +15,13 @@ from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lex_rank import LexRankSummarizer
 
-# NLP/Graph availability check (Kept for robustness)
-try:
+@st.cache_resource
+def load_spacy_model():
     import spacy
-    nlp = spacy.load("en_core_web_sm")
-    SPACY_AVAILABLE = True
-except Exception as e:
-    print(f"spaCy load failed: {e}")
-    SPACY_AVAILABLE = False
+    return spacy.load("en_core_web_sm")
+
+nlp = load_spacy_model()
+SPACY_AVAILABLE = True
 
 
 # CONFIG
@@ -135,13 +134,6 @@ def get_tag_similarity(df, reference_title):
 def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[str], top_n_entities=5):
     # Use Spacy to extract entities and build a graph.
     if not SPACY_AVAILABLE:
-        return None
-
-    try:
-        # We assume this works based on your confirmation
-        nlp = spacy.load("en_core_web_sm")
-    except Exception as e:
-        st.error(f"Error loading spaCy model: {e}")
         return None
 
     G = nx.Graph()
