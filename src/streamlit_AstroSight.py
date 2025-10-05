@@ -24,6 +24,17 @@ try:
     SPACY_AVAILABLE = True
 except Exception:
     SPACY_AVAILABLE = False
+    import nltk
+    import streamlit as st
+
+
+    @st.cache_resource
+    def setup_nltk():
+        nltk.download('punkt')
+        nltk.download('punkt_tab')
+
+
+    setup_nltk()
 
 # CONFIG
 DEFAULT_DATAFILE = "final_analyzed_data.csv"
