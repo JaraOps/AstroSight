@@ -27,14 +27,18 @@ except Exception:
     import nltk
     import streamlit as st
 
+    import nltk
+    import os
 
-    @st.cache_resource
-    def setup_nltk():
-        nltk.download('punkt')
-        nltk.download('punkt_tab')
+    # Force download punkt to a writable path
+    nltk_data_path = os.path.expanduser('~/nltk_data')
+    os.makedirs(nltk_data_path, exist_ok=True)
 
+    nltk.download('punkt', download_dir=nltk_data_path)
 
-    setup_nltk()
+    # Fix the 'punkt_tab' bug (create an empty folder so NLTK stops crashing)
+    punkt_tab_path = os.path.join(nltk_data_path, 'tokenizers', 'punkt_tab', 'english')
+    os.makedirs(punkt_tab_path, exist_ok=True)
 
 # CONFIG
 DEFAULT_DATAFILE = "final_analyzed_data.csv"
