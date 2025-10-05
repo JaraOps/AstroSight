@@ -17,7 +17,8 @@ from sumy.summarizers.lex_rank import LexRankSummarizer
 
 import spacy
 
-nlp = spacy.load("en_core_web_sm")
+import os
+nlp = spacy.load(os.path.join("src", "en_core_web_sm"))
 SPACY_AVAILABLE = True
 
 
