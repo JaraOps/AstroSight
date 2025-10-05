@@ -53,12 +53,31 @@ def assign_theme(keywords_str):
         return "Other/Unclassified"
     return " | ".join(assigned_themes)
 
-#def main_categorization_pipeline():
+def main_categorization_pipeline():
+    try:
+        df = pd.read_csv(INPUT_CSV_FILE)
+        print(f"Data loaded successfully: {len(df)} publications.")
+    except FileNotFoundError:
+        print(f"Error: Input CSV file not found at '{INPUT_CSV_FILE}'.")
+        return
 
+    print("Assigning thematic categories...")
 
+    # Apply the thematic assignment function
+    df['Theme_Category'] = df[KEYWORD_COLUMN].apply(assign_theme)
 
+    # Save final DataFrame
+    df.to_csv(OUTPUT_CSV_FILE, index=False, encoding='utf-8')
 
+    # Display results and top categories
+    theme_counts = df['Theme_Category'].value_counts()
 
+    print("\n\n Phase 4, Part A Complete")
+    print(f"Final data saved to **{OUTPUT_CSV_FILE}**.")
+    print("Top Thematic Breakdown")
+    print(theme_counts.head().to_string())
 
+if __name__ == "__main__":
+    main_categorization_pipeline()
 
 #Created and edited by: JaraOps
