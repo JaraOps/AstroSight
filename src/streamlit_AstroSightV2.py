@@ -322,7 +322,7 @@ with col2:
         st.markdown("---")
 
         # --- KNOWLEDGE GRAPH SECTION ---
-        st.subheader("Knowledge Graph (entities)")
+        st.subheader("Knowledge Graph")
         if not SPACY_AVAILABLE:
             st.error("Graph build failed (spaCy not available or model error)")
         else:
