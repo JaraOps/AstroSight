@@ -385,8 +385,6 @@ with col2:
 
         results_list = []
         for title, score in top_similar:
-            # **MUST FIX:** Ensure 'Theme_category' is correct (lowercase 'c')
-            # This line relies on your corrected column name!
             theme = df[df['Title'] == title]['Theme_category'].iloc[0]
 
             results_list.append({
