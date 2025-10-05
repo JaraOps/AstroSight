@@ -16,9 +16,12 @@ from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lex_rank import LexRankSummarizer
 
 import spacy
+from pathlib import Path
 
-import os
-nlp = spacy.load(os.path.join("src", "en_core_web_sm"))
+model_path = Path(__file__).parent / "en_core_web_sm"
+nlp = spacy.load(model_path)
+
+
 SPACY_AVAILABLE = True
 
 
