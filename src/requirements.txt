@@ -1,14 +1,9 @@
 streamlit
 pandas
-numpy
-scikit-learn
-scipy
-sumy
 spacy
 pyvis
 networkx
-tqdm
+sumy
 nltk
-# Optional: If you used Bio.Entrez or bs4 (BeautifulSoup) for the initial data fetch:
-# biopython
-# beautifulsoup4
+scikit-learn
+numpy
