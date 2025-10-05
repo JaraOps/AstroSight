@@ -114,9 +114,9 @@ def get_top_keywords(df, keywords_column):
 
 
 # --- TAG OVERLAP ENGINE (The Stable Discovery Feature) ---
-def get_tag_similarity(df, reference_title):
+def get_tag_similarity(df, Title):
     # Step 1: Ensure Keywords are split by semicolon ';'
-    ref_keywords_raw = df[df[TITLE_COL] == reference_title][KEYWORDS_COL].iloc[0]
+    ref_keywords_raw = df[df[TITLE_COL] == Title][KEYWORDS_COL].iloc[0]
     ref_keywords = set(ref_keywords_raw.split(';') if isinstance(ref_keywords_raw, str) else [])
     ref_keywords = {k.strip() for k in ref_keywords if k.strip()}  # Clean whitespace
 
@@ -124,7 +124,7 @@ def get_tag_similarity(df, reference_title):
 
     for index, row in df.iterrows():
         title = row[TITLE_COL]
-        if title != reference_title:
+        if title != Title:
             other_keywords_raw = row[KEYWORDS_COL]
             other_keywords = set(other_keywords_raw.split(';') if isinstance(other_keywords_raw, str) else [])
             other_keywords = {k.strip() for k in other_keywords if k.strip()}  # Clean whitespace
