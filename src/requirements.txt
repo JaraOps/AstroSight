@@ -11,4 +11,4 @@ tqdm
 nltk
 # Optional: If you used Bio.Entrez or bs4 (BeautifulSoup) for the initial data fetch:
 # biopython
-# beautifulsoup4
+# beautifulsoup
