@@ -150,7 +150,6 @@ def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[
         title = titles[i]
 
         G.add_node(title, type="doc", color=COLOR_MAP['DOC'])
-        st.write(f"Processing document {i + 1}")
 
         doc = nlp(txt[:5000])  # Limit text length for speed
 
