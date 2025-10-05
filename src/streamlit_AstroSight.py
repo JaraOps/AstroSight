@@ -5,3 +5,10 @@ from typing import List
 
 import pandas as pd
 import streamlit as st
+
+#AI
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except Exception:
+    OPENAI_AVAILABLE = False
