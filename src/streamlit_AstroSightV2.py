@@ -1,12 +1,9 @@
 # create web application with streamlit including knowledge graph, add AI for purpose driven summaries
 
-import os
-from typing import List
-from pathlib import Path
 
+from typing import List
 from pyvis.network import Network
 import networkx as nx
-import numpy as np
 import collections
 import nltk
 import pandas as pd
@@ -25,7 +22,6 @@ nlp_spacy = spacy.load(model_path)
 SPACY_AVAILABLE = True
 
 nltk.data.path.append("src/nltk_data")
-from pathlib import Path
 model_path = Path(__file__).parent / "en_core_web_sm"
 nlp = spacy.load(str(model_path.resolve()))
 from nltk.tokenize import sent_tokenize
@@ -113,9 +109,8 @@ def get_top_keywords(df, keywords_column):
     return top_keywords_df
 
 
-# --- TAG OVERLAP ENGINE (The Stable Discovery Feature) ---
+
 def get_tag_similarity(df, Title):
-    #st.write(df[[TITLE_COL, KEYWORDS_COL]].head(10)) #sacar
 
     ref_row = df[df[TITLE_COL] == Title]
     if ref_row.empty:
@@ -125,9 +120,7 @@ def get_tag_similarity(df, Title):
     ref_keywords = {k.strip().lower() for k in ref_keywords_raw.split(',') if k.strip()}
 
     similarity_scores = {}
-   # st.write("Reference title:", Title)  # sacar
-    #st.write("Raw keywords:", ref_keywords_raw)  # sacar
-    #st.write("Cleaned keywords:", ref_keywords)  # sacar
+
 
     for index, row in df.iterrows():
         other_title = row[TITLE_COL]
