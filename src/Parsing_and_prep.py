@@ -34,6 +34,21 @@ def parse_pmc_article(xml_string):
     pmc_id_tag = soup.find('article-id', {'pub-id-type': 'pmc'})
     if pmc_id_tag:
         data['PMC_ID'] = pmc_id_tag.get_text(strip=True)
+    if not pmc_id_tag:
+        id_tag = soup.find('article-id', text=re.compile(r'PMC\d+'))
+        if id_tag:
+            pmc_id_tag = id_tag.get_text(strip=True)
+
+    if not pmc_id_tag:
+        ext_id_tag = soup.find('ext-link', {'ext-link-type': 'pmc'})
+        if ext_id_tag:
+            # Extract only the PMC number from the URL/link text
+            match = re.search(r'(PMC\d+)', ext_id_tag.get_text(strip=True))
+            if match:
+                pmc_id_tag = match.group(0)
+
+    # Store the final result
+    data['PMC_ID'] = pmc_id_tag
 
     # Title
     title_tag = soup.find('article-title')
