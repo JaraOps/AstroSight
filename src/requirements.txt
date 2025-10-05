@@ -3,5 +3,3 @@ pandas
 spacy
 pyvis
 networkx
-transformers
-torch # Hugging Face models require PyTorch
