@@ -4,13 +4,19 @@ import os
 from typing import List
 from pathlib import Path
 import collections
-import re  # Core Python library for sentence splitting
-from operator import itemgetter  # For sorting sentences
 
-# Removed all external NLP libraries: nltk, sumy, gensim, scipy
+# CRITICAL: Importing necessary Hugging Face libraries
+try:
+    from transformers import pipeline
+
+    # We will load the model only once, using st.cache_resource
+    HF_PIPELINE_AVAILABLE = True
+except ImportError:
+    HF_PIPELINE_AVAILABLE = False
 
 import pandas as pd
 import streamlit as st
+from operator import itemgetter
 
 # NLP/Graph
 try:
@@ -42,7 +48,7 @@ def get_absolute_path(filename):
 @st.cache_data
 def load_data():
     full_path = get_absolute_path(DEFAULT_DATAFILE)
-
+    # ... (rest of load_data remains the same)
     if not full_path.exists():
         if not Path(DEFAULT_DATAFILE).exists():
             st.error(f"Data file not found: {full_path}. Check file location or path.")
@@ -55,7 +61,6 @@ def load_data():
         df = df.rename(columns={
             "Theme_Category": "Theme_category",
         }, inplace=False)
-        # Drop rows where Title is missing to prevent key errors in selectbox
         df.dropna(subset=[TITLE_COL], inplace=True)
         return df
     except Exception as e:
@@ -63,58 +68,62 @@ def load_data():
         return pd.DataFrame()
 
 
-@st.cache_data
-def summarize_with_keyword_rank(text, keywords_str, sentence_count=3):
-    """
-    Generates a summary using a simple, dependency-free keyword-ranking algorithm.
-    It ranks sentences based on the number of keywords they contain.
-    """
-    if not text:
-        return "No text available for summarization."
+# --- CRITICAL NEW FUNCTION: TRANSFORMERS SUMMARIZATION ---
+@st.cache_resource
+def get_summarizer_pipeline():
+    """Loads a small, efficient summarization model once."""
+    if not HF_PIPELINE_AVAILABLE:
+        return None
 
-    # 1. Prepare keywords
-    if isinstance(keywords_str, str):
-        split_char = ';' if ';' in keywords_str else ','
-        keywords = set([k.strip().lower() for k in keywords_str.split(split_char) if k.strip()])
-    else:
-        keywords = set()
-
-    if not keywords:
-        return "No keywords available to rank the text."
-
-    # 2. Split text into sentences using regex (dependency-free sentence tokenizer)
-    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', text.strip())
-
-    # Ensure we don't try to summarize more sentences than exist
-    if len(sentences) < sentence_count:
-        sentence_count = len(sentences)
-
-    # 3. Score sentences
-    scored_sentences = []
-    for i, sentence in enumerate(sentences):
-        score = 0
-        for keyword in keywords:
-            if keyword in sentence.lower():
-                score += 1
-        scored_sentences.append({'sentence': sentence, 'score': score, 'order': i})
-
-    # 4. Select top sentences by score
-    # Sort by score (descending), then by original order (ascending)
-    top_sentences = sorted(scored_sentences, key=itemgetter('score', 'order'), reverse=True)
-
-    # 5. Take the top N, then sort them back into original order
-    final_summary_sentences = sorted(top_sentences[:sentence_count], key=itemgetter('order'))
-
-    return " ".join([item['sentence'] for item in final_summary_sentences])
+    # We use 'facebook/bart-large-cnn' as it's a common, high-quality choice
+    # You can change this to a smaller model like 'sshleifer/distilbart-cnn-6-6' if installation fails
+    try:
+        return pipeline(
+            "summarization",
+            model="sshleifer/distilbart-cnn-6-6"  # Smaller, faster model
+        )
+    except Exception as e:
+        st.error(f"Failed to load Hugging Face model: {e}")
+        return None
 
 
-# --- TAG OVERLAP ENGINE (CRITICAL BUG FIX IMPLEMENTED) ---
-# NOTE: This function does not change.
+def summarize_with_transformers(text, min_length=40, max_length=150):
+    """Generates a summary using a pre-trained Hugging Face model."""
+    summarizer = get_summarizer_pipeline()
+
+    if summarizer is None:
+        return "High-quality summarization is unavailable (model failed to load)."
+
+    if not text or len(text.split()) < 50:
+        return "Text too short for transformer summarization (min 50 words recommended)."
+
+    try:
+        # Truncate text if it's excessively long (models have token limits)
+        MAX_INPUT_WORDS = 500
+        text_list = text.split()
+        if len(text_list) > MAX_INPUT_WORDS:
+            text = " ".join(text_list[:MAX_INPUT_WORDS])
+
+        result = summarizer(
+            text,
+            max_length=max_length,
+            min_length=min_length,
+            do_sample=False
+        )
+        return result[0]['summary_text']
+
+    except Exception as e:
+        return f"Error during transformer summarization: {e}"
+
+
+# -----------------------------------------------------------
+
+
+# --- TAG OVERLAP ENGINE (Remains the same) ---
 def get_tag_similarity(df, reference_title):
-    # 1. Get the keywords for the selected article
+    # ... (rest of get_tag_similarity remains the same)
     ref_keywords_raw = df[df[TITLE_COL] == reference_title][KEYWORDS_COL].iloc[0]
 
-    # FIX: Check if string, then split and clean (The necessary fix for string keywords)
     if isinstance(ref_keywords_raw, str):
         split_char = ';' if ';' in ref_keywords_raw else ','
         ref_keywords = set([k.strip() for k in ref_keywords_raw.split(split_char) if k.strip()])
@@ -134,7 +143,6 @@ def get_tag_similarity(df, reference_title):
             else:
                 other_keywords = set()
 
-            # Score is the count of shared tags
             score = len(ref_keywords.intersection(other_keywords))
             similarity_scores[title] = score
 
@@ -143,10 +151,10 @@ def get_tag_similarity(df, reference_title):
     return top_similar
 
 
-# NEW HELPER: For Global Keywords Table
-# NOTE: This function does not change.
+# --- GLOBAL KEYWORD TABLE (Remains the same) ---
 @st.cache_data
 def get_top_keywords(df, keywords_column):
+    # ... (rest of get_top_keywords remains the same)
     all_keywords = []
 
     for keywords in df[keywords_column].fillna(''):
@@ -167,11 +175,12 @@ def get_top_keywords(df, keywords_column):
 
 @st.cache_data
 def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[str], top_n_entities=5):
-    # NOTE: This function remains the same, assuming spaCy installation is now stable.
+    # ... (rest of build_entity_graph remains the same)
     if not SPACY_AVAILABLE:
         return None
 
     try:
+        # Load the spacy model here
         nlp = spacy.load("en_core_web_sm")
     except Exception as e:
         st.error(f"Error loading spaCy model: {e}")
@@ -209,6 +218,7 @@ def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[
 
 
 def draw_pyvis_graph(G: nx.Graph, height="600px", width="100%"):
+    # ... (rest of draw_pyvis_graph remains the same)
     net = Network(height=height, width=width, notebook=False, cdn_resources='local', directed=False)
 
     for n, attrs in G.nodes(data=True):
@@ -274,13 +284,11 @@ col1, col2 = st.columns([1, 2])
 
 with col1:
     st.subheader("Publications")
-    # show a selectable list
     titles = filtered[TITLE_COL].fillna('Untitled').tolist()
     sel = st.selectbox("Choose an article (by title)", options=titles)
 
     try:
         idx = filtered[filtered[TITLE_COL].fillna('Untitled') == sel].index[0]
-        # small metadata
         st.markdown(f"**Authors:** {filtered.loc[idx, AUTHORS_COL] if AUTHORS_COL in filtered.columns else 'N/A'}")
         if YEAR_COL in filtered.columns:
             st.markdown(f"**Year:** {filtered.loc[idx, YEAR_COL]}")
@@ -288,13 +296,12 @@ with col1:
             st.markdown(f"**PMCID:** {filtered.loc[idx, PMC_COL]}")
         st.markdown(f"**Theme:** {filtered.loc[idx, THEME_COL] if THEME_COL in filtered.columns else 'N/A'}")
 
-        # Get keywords for the summary function
         current_keywords = filtered.loc[idx, KEYWORDS_COL]
         current_text = filtered.loc[idx, TEXT_COL]
 
     except IndexError:
         st.warning("No article selected or filter is too strict.")
-        idx = -1  # Set a safe index value
+        idx = -1
         current_keywords = ""
         current_text = ""
 
@@ -322,7 +329,7 @@ with col2:
     st.subheader("Article details & tools")
     st.markdown(f"### {sel}")
 
-    if idx != -1:  # Only proceed if an article is selected
+    if idx != -1:
         st.markdown("**Keywords (TF-IDF):**")
         st.write(current_keywords)
         st.markdown("**Abstract / Selected text (cleaned):**")
@@ -335,13 +342,15 @@ with col2:
         # --- Summarization Section ---
         st.header("Article Summarization")
 
-        SENTENCE_COUNT = 3
-
-        if st.button("Generate Summary"):
-            # Use the simple, dependency-free function
-            summary = summarize_with_keyword_rank(current_text, current_keywords, sentence_count=SENTENCE_COUNT)
-            st.subheader(f"Article Summary (Keyword Rank Model)")
-            st.info(summary)
+        if st.button("Generate AI Summary (BART-CNN)"):
+            if HF_PIPELINE_AVAILABLE:
+                with st.spinner("Generating summary with transformer model..."):
+                    summary = summarize_with_transformers(current_text)
+                    st.subheader(f"Article Summary (BART-CNN Model)")
+                    st.info(summary)
+            else:
+                st.error(
+                    "High-quality summarization dependencies are missing or failed to load. Please check installation logs for `transformers` and `torch`.")
 
         st.markdown("---")
 
@@ -350,9 +359,7 @@ with col2:
         if not SPACY_AVAILABLE:
             st.info("Graph is disabled (spaCy/pyvis dependencies missing or model not linked).")
         else:
-            st.write(
-                "Visualizes connections between the selected documents and extracted entities (e.g., ORGs, Events).")
-
+            # ... (rest of graph code remains the same)
             NER_LABELS = ["PERSON", "ORG", "GPE", "EVENT", "PRODUCT", "WORK_OF_ART"]
             selected_labels = st.multiselect(
                 "Entities to include (NER Labels):",
@@ -386,18 +393,16 @@ with col2:
 
         st.markdown("---")
 
-        # --- GLOBAL KEYWORD TABLE (New Stable Feature) ---
+        # --- GLOBAL KEYWORD TABLE ---
         st.header("🌐 Global Keyword Landscape (Top 10)")
-        st.write("A quantitative view of the most frequent concepts extracted across all papers.")
         top_keywords_table = get_top_keywords(df, KEYWORDS_COL)
         if not top_keywords_table.empty:
             st.dataframe(top_keywords_table, width='stretch')
 
         st.markdown("---")
 
-        # --- TAG OVERLAP ENGINE (The Stable Discovery Feature) ---
+        # --- TAG OVERLAP ENGINE ---
         st.header("🔑 Inter-document Tag Overlap Engine")
-        st.write("Instantly links papers based on shared core topics extracted by our NLP pipeline.")
 
         reference_title = st.selectbox(
             "Select an Article to find look-alikes:",
