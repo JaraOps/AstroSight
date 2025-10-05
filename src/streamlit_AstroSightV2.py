@@ -4,8 +4,6 @@ import os
 from typing import List
 from pathlib import Path
 
-# --- Keep all necessary imports for all features ---
-import spacy
 from pyvis.network import Network
 import networkx as nx
 import numpy as np
@@ -19,11 +17,13 @@ from sumy.summarizers.lex_rank import LexRankSummarizer
 
 # NLP/Graph availability check (Kept for robustness)
 try:
-    # Attempt to use the smallest vector model for faster loading if possible
-    # We assume spacy is correctly linked now
+    import spacy
+    nlp = spacy.load("en_core_web_sm")
     SPACY_AVAILABLE = True
-except Exception:
+except Exception as e:
+    print(f"spaCy load failed: {e}")
     SPACY_AVAILABLE = False
+
 
 # CONFIG
 DEFAULT_DATAFILE = "final_analyzed_data.csv"
