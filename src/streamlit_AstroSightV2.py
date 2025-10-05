@@ -115,26 +115,30 @@ def get_top_keywords(df, keywords_column):
 
 # --- TAG OVERLAP ENGINE (The Stable Discovery Feature) ---
 def get_tag_similarity(df, Title):
-    # Step 1: Ensure Keywords are split by semicolon ';'
-    ref_keywords_raw = df[df[TITLE_COL] == Title][KEYWORDS_COL].iloc[0]
-    ref_keywords = set(ref_keywords_raw.split(';') if isinstance(ref_keywords_raw, str) else [])
-    ref_keywords = {k.strip() for k in ref_keywords if k.strip()}  # Clean whitespace
+    ref_row = df[df[TITLE_COL] == Title]
+    if ref_row.empty:
+        return []
+
+    ref_keywords_raw = ref_row[KEYWORDS_COL].iloc[0] or ""
+    ref_keywords = {k.strip().lower() for k in ref_keywords_raw.split(';') if k.strip()}
 
     similarity_scores = {}
 
     for index, row in df.iterrows():
-        title = row[TITLE_COL]
-        if title != Title:
-            other_keywords_raw = row[KEYWORDS_COL]
-            other_keywords = set(other_keywords_raw.split(';') if isinstance(other_keywords_raw, str) else [])
-            other_keywords = {k.strip() for k in other_keywords if k.strip()}  # Clean whitespace
+        other_title = row[TITLE_COL]
+        if other_title != Title:
+            other_keywords_raw = row[KEYWORDS_COL] or ""
+            other_keywords = {k.strip().lower() for k in other_keywords_raw.split(';') if k.strip()}
 
             score = len(ref_keywords.intersection(other_keywords))
-            similarity_scores[title] = score
+            similarity_scores[other_title] = score
 
-    TOP_N_RESULTS = 5
-    top_similar = sorted(similarity_scores.items(), key=lambda item: item[1], reverse=True)[:TOP_N_RESULTS]
+    top_similar = sorted(similarity_scores.items(), key=lambda item: item[1], reverse=True)
+    top_similar = [(title, score) for title, score in top_similar if score > 0][:5]
+
     return top_similar
+
+
 
 
 @st.cache_data
