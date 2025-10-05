@@ -1,3 +1,8 @@
+# 1. FIX: NLTK punkt resource for LexRank Summarizer (Fixes NLTK tokenizer error)
 python -c "import nltk; nltk.download('punkt')"
+
+# 2. FIX: spaCy model download for Knowledge Graph
 python -m spacy download en_core_web_sm
+
+# 3. FIX: spaCy model link/setup
 python -m spacy link en_core_web_sm en_core_web_sm --force
