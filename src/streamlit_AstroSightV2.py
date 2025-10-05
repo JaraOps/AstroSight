@@ -8,7 +8,7 @@ from pyvis.network import Network
 import networkx as nx
 import numpy as np
 import collections
-
+import nltk
 import pandas as pd
 import streamlit as st
 from sumy.parsers.plaintext import PlaintextParser
@@ -19,10 +19,16 @@ import spacy
 from pathlib import Path
 
 model_path = Path(__file__).parent / "en_core_web_sm"
-nlp = spacy.load(model_path)
+nlp_spacy = spacy.load(model_path)
 
 
 SPACY_AVAILABLE = True
+
+nltk.data.path.append("src/nltk_data")
+from pathlib import Path
+model_path = Path(__file__).parent / "en_core_web_sm"
+nlp = spacy.load(str(model_path.resolve()))
+from nltk.tokenize import sent_tokenize
 
 
 # CONFIG
@@ -151,7 +157,7 @@ def build_entity_graph(texts: List[str], titles: List[str], entity_labels: List[
 
         G.add_node(title, type="doc", color=COLOR_MAP['DOC'])
 
-        doc = nlp(txt[:5000])  # Limit text length for speed
+        doc = nlp_spacy(txt[:5000])  # Limit text length for speed
 
         ents_by_label = {}
         for ent in doc.ents:
