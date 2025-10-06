@@ -4,7 +4,7 @@ from Bio import Entrez
 from tqdm import tqdm
 
 
-Entrez.email = "ignaciojara731@gmail.com"  # Replace with your email
+Entrez.email = "xxxxxxxxxxx"  # Replace with your email
 Entreztool = "AstroSightforSpaceBiology"
 
 InputFile = "SB_publication_PMC.csv"
