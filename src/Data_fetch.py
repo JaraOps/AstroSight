@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 
 Entrez.email = "xxxxxxxxxxx"  # Replace with your email
-Entreztool = "AstroSightforSpaceBiology"
+Entreztool = "AstroSightforSpaceBiology" #replace with your tool name
 
 InputFile = "SB_publication_PMC.csv"
 NCBI_DB = "pmc"
