@@ -1,7 +1,7 @@
 AstroSight: AI Research Navigator 🇨🇱
 Team: The Chilean Orbital
 
-Project Overview
+Project Overview:
 AstroSight is an advanced, high-performance web application designed to combat information overload in scientific research. I built it using Python and a suite of NLP tools to transform vast collections of 
 unstructured astronomical literature (sourced from NASA repositories) into a cohesive, searchable, and interactive knowledge base.
 
@@ -69,7 +69,7 @@ streamlit run streamlit_AstroSight.py
 The application will open in your default web browser.
 
 Solo Developer & Data Source
-This project was developed entirely by [Your Name] as a solo effort.
+This project was developed entirely by Ignacio Jara as a solo effort.
 
 Data Source
 The data used for this project consists of astronomical and astrophysical papers sourced from open-access repositories, including those maintained by NASA (e.g., PMC, ADS).
